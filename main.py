@@ -7,8 +7,10 @@ from playwright.sync_api import Playwright, TimeoutError, sync_playwright
 from modules.expert_analysis import open_expert_analysis_from_home
 # 导入：在“专家分析”页面选择标签的模块
 from modules.expert_tags import apply_expert_analysis_tag_filters
-# 导入：在结果列表中寻找目标卡片并进入详情页的模块
-from modules.expert_load_more import open_target_card_when_ready
+# 导入：在结果列表中等待目标卡片图片加载完成的模块
+from modules.expert_target_card import wait_for_target_card_image
+# 导入：点击目标卡片进入详情页的模块
+from modules.expert_card_opener import open_target_card_detail
 # 导入：进入详情页后执行下载的模块
 from modules.expert_download import download_pdf_from_detail_page
 # 导入：登录模块中的账号、密码、登录判断和登录动作
@@ -58,10 +60,17 @@ def run(playwright: Playwright) -> None:
         open_expert_analysis_from_home(page)
         # 在“专家分析”页面选择筛选标签
         apply_expert_analysis_tag_filters(page)
-        # 在结果列表中寻找目标卡片，并进入详情页
-        detail_page = open_target_card_when_ready(page, TARGET_CARD_TITLE)
+        # 等待目标卡片图片加载完成
+        target_card = wait_for_target_card_image(page, TARGET_CARD_TITLE)
+        # 点击目标卡片进入详情页
+        detail_page = open_target_card_detail(page, target_card)
         # 进入详情页后执行下载流程
-        download_pdf_from_detail_page(detail_page)
+        download_pdf_from_detail_page(
+            detail_page,
+            TARGET_CARD_TITLE,
+            should_download=True,
+            allow_detail_scroll=False,
+        )
         # 获取当前页面的 HTML 内容
         html = page.content()
 

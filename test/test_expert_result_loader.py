@@ -8,15 +8,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from modules.expert_load_more import open_target_card_when_ready
+from modules.expert_result_loader import click_load_more, scroll_page_to_bottom
 
 STORAGE_STATE = PROJECT_ROOT / "auth.json"
 TARGET_URL = ""
-TARGET_CARD_TITLE = ""
 
 
-def run(playwright: Playwright, target_url: str, target_card_title: str) -> None:
-    # 启动可见浏览器，测试“寻找目标卡片”模块
+def run(playwright: Playwright, target_url: str) -> None:
+    # 启动可见浏览器，测试结果页滚动和“加载更多”模块
     browser = playwright.chromium.launch(
         headless=False,
         slow_mo=100,
@@ -33,11 +32,11 @@ def run(playwright: Playwright, target_url: str, target_card_title: str) -> None
         page.goto(target_url, wait_until="domcontentloaded")
         page.wait_for_load_state("networkidle")
 
-        # 执行“寻找目标卡片 -> 必要时加载更多 -> 进入详情页”逻辑
-        detail_page = open_target_card_when_ready(page, target_card_title)
+        reached_bottom = scroll_page_to_bottom(page)
+        print(f"reached bottom: {reached_bottom}")
+        click_load_more(page)
 
-        print(f"opened detail page: {detail_page.url}")
-        print("expert_load_more test complete, keeping browser open for 10 seconds...")
+        print("expert_result_loader test complete, keeping browser open for 10 seconds...")
         time.sleep(10)
 
     except TimeoutError as e:
@@ -51,9 +50,7 @@ def run(playwright: Playwright, target_url: str, target_card_title: str) -> None
 
 if __name__ == "__main__":
     if not TARGET_URL:
-        raise ValueError("please set TARGET_URL in test/test_expert_load_more.py before running")
-    if not TARGET_CARD_TITLE:
-        raise ValueError("please set TARGET_CARD_TITLE in test/test_expert_load_more.py before running")
+        raise ValueError("please set TARGET_URL in test/test_expert_result_loader.py before running")
 
     with sync_playwright() as playwright:
-        run(playwright, TARGET_URL, TARGET_CARD_TITLE)
+        run(playwright, TARGET_URL)

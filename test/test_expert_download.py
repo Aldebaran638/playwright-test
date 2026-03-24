@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import time
 from pathlib import Path
 
@@ -12,6 +12,9 @@ from modules.expert_download import download_pdf_from_detail_page
 
 STORAGE_STATE = PROJECT_ROOT / "auth.json"
 TARGET_URL = "https://clients.mintel.com/content/innovative-product/you-hui-shou-su-liao-ping-zhi-cheng-de-ya-shua-ji-qi-bao-zhuang?fromSearch=%3Ffilters.product-development%3D8%252C2%252C11%26resultPosition%3D107"
+ARTICLE_TITLE = "由回收塑料瓶制成的牙刷及其包装"
+SHOULD_DOWNLOAD = True
+ALLOW_DETAIL_SCROLL = True
 
 
 def run(playwright: Playwright, target_url: str) -> None:
@@ -32,8 +35,13 @@ def run(playwright: Playwright, target_url: str) -> None:
         page.goto(target_url, wait_until="domcontentloaded")
         page.wait_for_load_state("networkidle")
 
-        # 执行固定下载流程
-        download_pdf_from_detail_page(page)
+        # 执行详情页动作流程
+        download_pdf_from_detail_page(
+            page,
+            ARTICLE_TITLE,
+            should_download=SHOULD_DOWNLOAD,
+            allow_detail_scroll=ALLOW_DETAIL_SCROLL,
+        )
 
         print("expert_download test complete, keeping browser open for 10 seconds...")
         time.sleep(10)
@@ -50,6 +58,8 @@ def run(playwright: Playwright, target_url: str) -> None:
 if __name__ == "__main__":
     if not TARGET_URL:
         raise ValueError("please set TARGET_URL in test/test_expert_download.py before running")
+    if not ARTICLE_TITLE:
+        raise ValueError("please set ARTICLE_TITLE in test/test_expert_download.py before running")
 
     with sync_playwright() as playwright:
         run(playwright, TARGET_URL)
