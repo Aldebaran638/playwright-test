@@ -9,7 +9,7 @@ PORTAL_HOME = "https://portal.mintel.com/"
 CLIENTS_HOME = "https://clients.mintel.com/home"
 
 
-def human_wait(min_sec=5, max_sec=9):
+def human_wait(min_sec=3, max_sec=6):
     # 随机等待，避免操作过于机械
     t = random.uniform(min_sec, max_sec)
     print(f"wait {t:.2f}s")

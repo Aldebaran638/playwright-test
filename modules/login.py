@@ -13,7 +13,7 @@ LOGIN_URL = "https://portal.mintel.com/portal/login?next=https%3A%2F%2Foauth.min
 PORTAL_HOME = "https://portal.mintel.com/"
 
 
-def human_wait(min_sec=5, max_sec=9):
+def human_wait(min_sec=3, max_sec=6):
     # 随机等待，避免操作节奏过于固定
     t = random.uniform(min_sec, max_sec)
     print(f"wait {t:.2f}s")
@@ -23,7 +23,7 @@ def human_wait(min_sec=5, max_sec=9):
 def human_type(locator, text, min_delay=80, max_delay=180):
     # 先聚焦输入框并清空旧内容
     locator.click()
-    human_wait(5, 6)
+    human_wait(3, 6)
     locator.clear()
     # 逐字符输入，模拟人工输入节奏
     for ch in text:
@@ -35,7 +35,7 @@ def is_logged_in(page: Page) -> bool:
         # 访问门户主页，检查是否被重定向到登录页
         page.goto(PORTAL_HOME, wait_until="domcontentloaded")
         page.wait_for_load_state("networkidle")
-        human_wait(5, 7)
+        human_wait(3, 6)
 
         # 如果 URL 中包含 login 关键词，说明当前未登录
         current_url = page.url.lower()
@@ -75,11 +75,11 @@ def do_login(page: Page):
     human_wait()
 
     login_btn.click()
-    human_wait(8, 12)
+    human_wait(3, 6)
 
     # 等待登录后的页面跳转完成
     page.wait_for_load_state("networkidle")
-    human_wait(5, 8)
+    human_wait(3, 6)
 
     # 如果提交后仍停留在登录页，则视为登录失败
     if "login" in page.url.lower():

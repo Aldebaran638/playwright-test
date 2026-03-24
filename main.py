@@ -1,17 +1,23 @@
-import time
+﻿import time
 from pathlib import Path
 
 from playwright.sync_api import Playwright, TimeoutError, sync_playwright
 
 # 导入：从主页进入“专家分析”页面的模块
 from modules.expert_analysis import open_expert_analysis_from_home
-# 导入：在“专家分析”页面应用筛选条件的模块
-from modules.expert_filters import apply_expert_analysis_filters
+# 导入：在“专家分析”页面选择标签的模块
+from modules.expert_tags import apply_expert_analysis_tag_filters
+# 导入：在结果列表中寻找目标卡片并进入详情页的模块
+from modules.expert_load_more import open_target_card_when_ready
+# 导入：进入详情页后执行下载的模块
+from modules.expert_download import download_pdf_from_detail_page
 # 导入：登录模块中的账号、密码、登录判断和登录动作
 from modules.login import PASSWORD, USERNAME, do_login, is_logged_in
 
 # 本地登录态文件，用于复用已登录会话
 STORAGE_STATE = "auth.json"
+# 要寻找的目标卡片标题
+TARGET_CARD_TITLE = "The Week in Trends – Feelings First, Products Second"
 
 
 def run(playwright: Playwright) -> None:
@@ -50,8 +56,12 @@ def run(playwright: Playwright) -> None:
 
         # 从主页进入“专家分析”页面
         open_expert_analysis_from_home(page)
-        # 在“专家分析”页面勾选筛选条件
-        apply_expert_analysis_filters(page)
+        # 在“专家分析”页面选择筛选标签
+        apply_expert_analysis_tag_filters(page)
+        # 在结果列表中寻找目标卡片，并进入详情页
+        detail_page = open_target_card_when_ready(page, TARGET_CARD_TITLE)
+        # 进入详情页后执行下载流程
+        download_pdf_from_detail_page(detail_page)
         # 获取当前页面的 HTML 内容
         html = page.content()
 
@@ -62,7 +72,7 @@ def run(playwright: Playwright) -> None:
         print("saved as test.html")
         # 保留浏览器 10 秒，方便人工确认结果
         print("flow complete, keeping browser open for 10 seconds...")
-        time.sleep(10)
+        time.sleep(60)
 
     # 单独处理 Playwright 超时异常
     except TimeoutError as e:
