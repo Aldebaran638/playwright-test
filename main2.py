@@ -1,9 +1,8 @@
 ﻿import random
 import time
-from pathlib import Path
-
 from playwright.sync_api import Playwright, TimeoutError, sync_playwright
 
+from modules.browser_context import launch_main2_browser_context
 from modules.expert_analysis import open_expert_analysis_from_home
 from modules.expert_card_opener import open_target_card_detail
 from modules.expert_card_reader import collect_visible_expert_cards
@@ -14,10 +13,7 @@ from modules.expert_tags import apply_expert_analysis_tag_filters
 from modules.expert_target_card import wait_for_target_card_image
 from modules.login import PASSWORD, USERNAME, do_login, is_logged_in
 
-EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\146.0.3856.78\msedge.exe")
-EDGE_USER_DATA_DIR = Path(r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Data2")
-EDGE_PROFILE_DIRECTORY = "Default"
-USER_INTENT = "请根据文章标题筛选符合用户需求、值得下载的文章。用户只对每一页的前三个文章感兴趣。请只从当前传入的新增标题中筛选。"
+USER_INTENT = "请根据文章标题筛选符合用户需求、值得下载的文章。用户只对每一页的后三个文章感兴趣。请只从当前传入的新增标题中筛选。"
 MAX_LOAD_MORE_CLICKS = 1
 FAKE_DETAIL_OPEN_ENABLED = True
 FAKE_DETAIL_OPEN_COUNT_RANGE = (0, 2)
@@ -184,19 +180,8 @@ def process_card_batch(page, cards_to_match: list[dict], downloaded_titles: set[
 
 
 def run(playwright: Playwright) -> None:
-    # 直接使用本机已安装的 Edge 和现有用户数据目录，避免创建新的浏览器环境
-    if not EDGE_EXECUTABLE_PATH.exists():
-        raise FileNotFoundError(f"missing Edge executable: {EDGE_EXECUTABLE_PATH}")
-    if not EDGE_USER_DATA_DIR.exists():
-        raise FileNotFoundError(f"missing Edge user data dir: {EDGE_USER_DATA_DIR}")
-
-    context = playwright.chromium.launch_persistent_context(
-        user_data_dir=str(EDGE_USER_DATA_DIR),
-        executable_path=str(EDGE_EXECUTABLE_PATH),
-        headless=False,
-        slow_mo=100,
-        args=[f"--profile-directory={EDGE_PROFILE_DIRECTORY}"],
-    )
+    # 浏览器初始化和 stealth.js 注入统一交给独立模块处理
+    context = launch_main2_browser_context(playwright)
 
     # 复用已打开页面，没有时再创建新页面
     page = context.pages[0] if context.pages else context.new_page()
@@ -212,8 +197,8 @@ def run(playwright: Playwright) -> None:
         # 进入“专家分析”页面
         open_expert_analysis_from_home(page)
 
-        # 选择标签，缩小结果范围
-        apply_expert_analysis_tag_filters(page)
+        # # 选择标签，缩小结果范围
+        # apply_expert_analysis_tag_filters(page)
 
         # 先读取初始页标题，首轮就对当前已经出现的卡片做一次判断
         initial_visible_cards = collect_visible_expert_cards(page)
