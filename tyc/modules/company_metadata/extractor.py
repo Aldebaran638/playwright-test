@@ -14,13 +14,14 @@ def normalize_text(value: str | None) -> str:
 
     value = value.replace("\xa0", " ")
     value = re.sub(r"\s+", " ", value)
-    return value.strip(" :：\t\r\n")
+    return value.strip(" :锛歕t\r\n")
 
 
 def safe_inner_text(locator: Locator) -> str:
     if locator.count() == 0:
         return ""
     return normalize_text(locator.first.inner_text())
+
 
 def extract_company_metadata(page: Page, source: str | Path | None = None) -> dict[str, Any]:
     logger.info("[模块] 开始等待公司详情主容器出现")
@@ -37,7 +38,7 @@ def extract_company_metadata(page: Page, source: str | Path | None = None) -> di
                 const clean = (text) => (text || "")
                     .replace(/\\u00a0/g, " ")
                     .replace(/\\s+/g, " ")
-                    .replace(/[：:]\\s*$/, "")
+                    .replace(/[锛:：]\\s*$/, "")
                     .trim();
 
                 const stripNoise = (element) => {
@@ -65,7 +66,7 @@ def extract_company_metadata(page: Page, source: str | Path | None = None) -> di
                         return;
                     }
 
-                    const label = clean((labelElement.innerText || labelElement.textContent || "").replace(/[：:]/g, ""));
+                    const label = clean((labelElement.innerText || labelElement.textContent || "").replace(/[锛:：]/g, ""));
                     if (!label) {
                         return;
                     }

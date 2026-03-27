@@ -3,7 +3,7 @@ from typing import Any
 from loguru import logger
 from playwright.sync_api import Page
 
-from tyc.modules.company_metadata_extractor import extract_company_metadata
+from tyc.modules.company_metadata import extract_company_metadata
 from tyc.modules.enter_company_detail_page import enter_company_detail_page
 from tyc.modules.run_step import run_step
 
