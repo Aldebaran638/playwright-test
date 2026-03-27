@@ -82,3 +82,19 @@ main(要爬取的内容)
 }
 
 输出选中情况:m中有哪些没有找到,有哪些找到了.
+
+
+    page.get_by_role("searchbox", name="请输入公司名称、人名、品牌名称等关键词").click()
+    page.get_by_role("searchbox", name="请输入公司名称、人名、品牌名称等关键词").fill("小米通讯技术有限公司")
+    page.get_by_text("天眼一下").first.click()
+    with page.expect_popup() as page1_info:
+        page.get_by_role("link", name="小米通讯技术有限公司", exact=True).click()
+    page1 = page1_info.value
+
+将以上部分提取为一个模块，功能是：进入指定公司详情页
+
+- 
+tyc/main文件的流程改为:
+检查当前是否登录->调用"搜索并进入详情页"模块->调用 提取公司元信息 模块->退出
+
+注意,我需要一个全局变量来设置我要查的公司信息的全称
