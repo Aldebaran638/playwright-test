@@ -41,7 +41,7 @@ def query_companies_sequentially(
                 f"等待详情页加载完成: {company_name}",
                 page_getter=lambda: detail_page,
             )
-
+            # 从详情页提取公司数据
             company_data = extract_company_metadata(detail_page, source=detail_page.url)
             results.append(
                 {

@@ -3,7 +3,7 @@ from pathlib import Path
 from playwright.sync_api import BrowserContext, Playwright
 
 
-EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\146.0.3856.78\msedge.exe")
+EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 EDGE_USER_DATA_DIR = Path(r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Data2")
 EDGE_PROFILE_DIRECTORY = "Default"
 STEALTH_SCRIPT_PATH = Path(__file__).resolve().parent / "assets" / "stealth.min.js"

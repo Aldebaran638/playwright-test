@@ -22,6 +22,8 @@ LOGIN_MODAL_SELECTOR_PATTERNS = [
 def normalize_text(value: str | None) -> str:
     if not value:
         return ""
+    if not isinstance(value, str):
+        return str(value)
     value = value.replace("\xa0", " ")
     value = re.sub(r"\s+", " ", value)
     return value.strip()

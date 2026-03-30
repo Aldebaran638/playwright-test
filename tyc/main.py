@@ -16,6 +16,7 @@ from tyc.modules.company_risk.collector import collect_company_risk
 from tyc.modules.enter_company_detail_page import enter_company_detail_page
 from tyc.modules.login_state import wait_until_logged_in
 from tyc.modules.run_step import run_step
+from tyc.modules.business_risk.analyzer import analyze_company_business_risk
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -121,19 +122,27 @@ def run(playwright: Playwright) -> None:
         logger.info("[主流程] 开始检查当前登录状态")
         wait_until_logged_in(page)
 
-        # 调用批量查询模块，按顺序逐个查询目标公司。
-        logger.info("[主流程] 调用批量公司查询模块")
-        company_results = query_companies_sequentially(
-            page,
-            TARGET_COMPANY_NAMES,
-            home_url=TYC_HOME_URL,
-            stop_on_error=False,
-            return_to_home_each_time=True,
-        )
+        # # 调用批量查询模块，按顺序逐个查询目标公司。
+        # logger.info("[主流程] 调用批量公司查询模块")
+        # company_results = query_companies_sequentially(
+        #     page,
+        #     TARGET_COMPANY_NAMES,
+        #     home_url=TYC_HOME_URL,
+        #     stop_on_error=False,
+        #     return_to_home_each_time=True,
+        # )
 
-        # 在批量元信息查询结果的基础上，再逐个补充风险信息。
-        logger.info("[主流程] 开始在 main 中补充每家公司的风险信息")
-        company_results = enrich_company_results_with_risk(page, company_results)
+        # # 在批量元信息查询结果的基础上，再逐个补充风险信息。
+        # logger.info("[主流程] 开始在 main 中补充每家公司的风险信息")
+        # company_results = enrich_company_results_with_risk(page, company_results)
+
+        # 分析深圳市维琪科技股份有限公司的经营风险VIP需求
+        logger.info("[主流程] 开始分析深圳市维琪科技股份有限公司的经营风险")
+        company_name = "深圳市维琪科技股份有限公司"
+        business_risk_result = analyze_company_business_risk(page, company_name, TYC_HOME_URL)
+        
+        # 保存分析结果
+        company_results = [business_risk_result]
 
         # 保存整批查询结果，然后结束本次运行。
         logger.info("[主流程] 保存批量查询结果并退出")

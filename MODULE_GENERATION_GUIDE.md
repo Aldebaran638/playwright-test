@@ -135,3 +135,7 @@ playwright/
 ## 10. 默认执行原则
 
 后续所有“把知识转成可复用模块”的任务，默认按这份规范执行，除非用户明确提出新的要求
+
+
+enter_company_detail_page这种大模块调用是没必要用run_step的.但是 page.get_by_role这样的playwright直接的元步骤,API是需要使用的
+包括click_business_risk_tab.能明白嘛?
