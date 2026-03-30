@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from tyc.modules.business_risk.business_risk_main import process_business_risk
 
-from tyc.modules.browser_context import launch_tyc_browser_context
+from tyc.modules.browser_context import launch_tyc_browser_context, save_cookies
 
 from tyc.modules.login_state import wait_until_logged_in
 from tyc.modules.run_step import run_step
@@ -52,6 +52,10 @@ def run(playwright: Playwright) -> None:
         # 调用登录态检测模块，未登录时阻塞等待用户手动完成登录。
         logger.info("[主流程] 开始检查当前登录状态")
         wait_until_logged_in(page)
+        
+        # 登录成功后保存cookies
+        logger.info("[主流程] 登录成功，保存cookies")
+        save_cookies(context)
 
         process_business_risk(page,TARGET_COMPANY_NAMES)
 
