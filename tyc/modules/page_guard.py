@@ -12,7 +12,7 @@ LOGIN_MODAL_PAGE = "login_modal_page"
 VERIFICATION_PAGE = "verification_page"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PageGuardResult:
     is_illegal: bool
     page_type: str
@@ -20,9 +20,9 @@ class PageGuardResult:
 
 
 def check_page(page: Page) -> PageGuardResult:
-    # 统一调度所有非法页面检测子模块，返回当前页面状态。
+    # 先识别登录弹窗，再识别身份验证页，最后才认为当前页面正常。
     if is_login_modal_page(page):
-        logger.info("[模块] 总检查模块判定当前页面为登录弹窗")
+        logger.info("[page_guard] 当前页面被识别为登录弹窗")
         return PageGuardResult(
             is_illegal=True,
             page_type=LOGIN_MODAL_PAGE,
@@ -30,14 +30,14 @@ def check_page(page: Page) -> PageGuardResult:
         )
 
     if is_verification_page(page):
-        logger.info("[模块] 总检查模块判定当前页面为身份验证页")
+        logger.info("[page_guard] 当前页面被识别为身份验证页")
         return PageGuardResult(
             is_illegal=True,
             page_type=VERIFICATION_PAGE,
             message="当前页面是身份验证页，需要用户手动完成验证。",
         )
 
-    logger.info("[模块] 总检查模块判定当前页面正常")
+    logger.info("[page_guard] 当前页面正常")
     return PageGuardResult(
         is_illegal=False,
         page_type=NORMAL_PAGE,

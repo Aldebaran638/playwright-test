@@ -13,10 +13,18 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import tyc.modules.company_metadata.extractor as extractor_module
+from tyc.modules.run_step import StepResult
 
 
 logger.remove()
 logger.add(sys.stdout, format="{message}")
+
+
+def build_success_step_result(fn, *args, **kwargs):
+    kwargs.pop("step_name", None)
+    kwargs.pop("critical", None)
+    kwargs.pop("retries", None)
+    return StepResult(ok=True, value=fn(*args, **kwargs), error=None)
 
 
 class TestCompanyMetadataExtractor(unittest.TestCase):
@@ -84,7 +92,7 @@ class TestCompanyMetadataExtractor(unittest.TestCase):
             with patch.object(
                 extractor_module,
                 "run_step",
-                side_effect=lambda action, step_name, **kwargs: action(),
+                side_effect=build_success_step_result,
             ):
                 result = extractor_module.extract_company_metadata(page, source="inline-sample")
         finally:
@@ -114,7 +122,7 @@ class TestCompanyMetadataExtractor(unittest.TestCase):
             with patch.object(
                 extractor_module,
                 "run_step",
-                side_effect=lambda action, step_name, **kwargs: action(),
+                side_effect=build_success_step_result,
             ):
                 result = extractor_module.extract_company_metadata(page, source="inline-sample")
         finally:

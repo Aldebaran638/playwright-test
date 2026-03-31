@@ -12,10 +12,18 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import tyc.modules.batch_company_query as batch_company_query_module
+from tyc.modules.run_step import StepResult
 
 
 logger.remove()
 logger.add(sys.stdout, format="{message}")
+
+
+def build_success_step_result(fn, *args, **kwargs):
+    kwargs.pop("step_name", None)
+    kwargs.pop("critical", None)
+    kwargs.pop("retries", None)
+    return StepResult(ok=True, value=fn(*args, **kwargs), error=None)
 
 
 class FakePage:
@@ -44,6 +52,9 @@ class TestBatchCompanyQuery(unittest.TestCase):
         logger.info("[测试1] 验证批量查询模块会按顺序收集多家公司结果")
         home_page = FakePage("https://www.tianyancha.com/")
 
+        def fake_go_home(page, *, home_url):
+            page.goto(home_url, wait_until="domcontentloaded")
+
         def fake_enter(page, company_name):
             return FakePage(f"https://detail.example.com/{company_name}")
 
@@ -53,7 +64,11 @@ class TestBatchCompanyQuery(unittest.TestCase):
         with patch.object(
             batch_company_query_module,
             "run_step",
-            side_effect=lambda action, step_name, **kwargs: action(),
+            side_effect=build_success_step_result,
+        ), patch.object(
+            batch_company_query_module,
+            "go_to_home_page",
+            side_effect=fake_go_home,
         ), patch.object(
             batch_company_query_module,
             "enter_company_detail_page",
@@ -85,6 +100,9 @@ class TestBatchCompanyQuery(unittest.TestCase):
         logger.info("[测试2] 验证批量查询模块默认在单家公司失败后继续处理下一家")
         home_page = FakePage("https://www.tianyancha.com/")
 
+        def fake_go_home(page, *, home_url):
+            page.goto(home_url, wait_until="domcontentloaded")
+
         def fake_enter(page, company_name):
             if company_name == "失败公司":
                 raise RuntimeError("boom")
@@ -93,10 +111,23 @@ class TestBatchCompanyQuery(unittest.TestCase):
         def fake_extract(page, source=None):
             return {"source": source}
 
+        def fake_run_step(fn, *args, **kwargs):
+            kwargs.pop("step_name", None)
+            kwargs.pop("critical", None)
+            kwargs.pop("retries", None)
+            try:
+                return StepResult(ok=True, value=fn(*args, **kwargs), error=None)
+            except Exception as exc:
+                return StepResult(ok=False, value=None, error=exc)
+
         with patch.object(
             batch_company_query_module,
             "run_step",
-            side_effect=lambda action, step_name, **kwargs: action(),
+            side_effect=fake_run_step,
+        ), patch.object(
+            batch_company_query_module,
+            "go_to_home_page",
+            side_effect=fake_go_home,
         ), patch.object(
             batch_company_query_module,
             "enter_company_detail_page",
@@ -120,15 +151,31 @@ class TestBatchCompanyQuery(unittest.TestCase):
         logger.info("[测试3] 验证批量查询模块在 stop_on_error=True 时遇错停止")
         home_page = FakePage("https://www.tianyancha.com/")
 
+        def fake_go_home(page, *, home_url):
+            page.goto(home_url, wait_until="domcontentloaded")
+
         def fake_enter(page, company_name):
             if company_name == "失败公司":
                 raise RuntimeError("boom")
             return FakePage(f"https://detail.example.com/{company_name}")
 
+        def fake_run_step(fn, *args, **kwargs):
+            kwargs.pop("step_name", None)
+            kwargs.pop("critical", None)
+            kwargs.pop("retries", None)
+            try:
+                return StepResult(ok=True, value=fn(*args, **kwargs), error=None)
+            except Exception as exc:
+                return StepResult(ok=False, value=None, error=exc)
+
         with patch.object(
             batch_company_query_module,
             "run_step",
-            side_effect=lambda action, step_name, **kwargs: action(),
+            side_effect=fake_run_step,
+        ), patch.object(
+            batch_company_query_module,
+            "go_to_home_page",
+            side_effect=fake_go_home,
         ), patch.object(
             batch_company_query_module,
             "enter_company_detail_page",

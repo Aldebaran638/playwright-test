@@ -13,10 +13,18 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import tyc.modules.company_risk.navigator as navigator_module
+from tyc.modules.run_step import StepResult
 
 
 logger.remove()
 logger.add(sys.stdout, format="{message}")
+
+
+def build_success_step_result(fn, *args, **kwargs):
+    kwargs.pop("step_name", None)
+    kwargs.pop("critical", None)
+    kwargs.pop("retries", None)
+    return StepResult(ok=True, value=fn(*args, **kwargs), error=None)
 
 
 class TestCompanyRiskNavigator(unittest.TestCase):
@@ -59,7 +67,7 @@ class TestCompanyRiskNavigator(unittest.TestCase):
             with patch.object(
                 navigator_module,
                 "run_step",
-                side_effect=lambda action, step_name, **kwargs: action(),
+                side_effect=build_success_step_result,
             ):
                 navigation_result, risk_page = navigator_module.open_first_available_risk_page(page)
 
@@ -92,7 +100,7 @@ class TestCompanyRiskNavigator(unittest.TestCase):
             with patch.object(
                 navigator_module,
                 "run_step",
-                side_effect=lambda action, step_name, **kwargs: action(),
+                side_effect=build_success_step_result,
             ):
                 navigation_result, risk_page = navigator_module.open_first_available_risk_page(page)
 

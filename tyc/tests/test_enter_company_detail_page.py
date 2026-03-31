@@ -12,10 +12,18 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import tyc.modules.enter_company_detail_page as enter_company_detail_page_module
+from tyc.modules.run_step import StepResult
 
 
 logger.remove()
 logger.add(sys.stdout, format="{message}")
+
+
+def build_success_step_result(fn, *args, **kwargs):
+    kwargs.pop("step_name", None)
+    kwargs.pop("critical", None)
+    kwargs.pop("retries", None)
+    return StepResult(ok=True, value=fn(*args, **kwargs), error=None)
 
 
 class FakePopupInfo:
@@ -63,6 +71,9 @@ class FakeLocator:
     def fill(self, value: str) -> None:
         self.page.calls.append(("fill", self.key, value))
 
+    def wait_for_load_state(self, state: str) -> None:
+        self.page.calls.append(("wait_for_load_state", self.key, state))
+
 
 class FakePage:
     def __init__(self, popup_page) -> None:
@@ -84,33 +95,50 @@ class FakePage:
         return FakeExpectPopup(self, self.popup_page)
 
 
+class PopupPage:
+    def __init__(self) -> None:
+        self.calls: list[tuple] = []
+
+    def wait_for_load_state(self, state: str) -> None:
+        self.calls.append(("wait_for_load_state", state))
+
+
 class TestEnterCompanyDetailPage(unittest.TestCase):
     def test_enter_company_detail_page_returns_popup_page(self) -> None:
         logger.info("[测试1] 验证模块会返回公司详情页对应的 popup page")
-        popup_page = object()
+        popup_page = PopupPage()
         page = FakePage(popup_page)
 
         with patch.object(
             enter_company_detail_page_module,
             "run_step",
-            side_effect=lambda action, step_name, **kwargs: action(),
+            side_effect=build_success_step_result,
+        ), patch.object(
+            enter_company_detail_page_module,
+            "_wait_if_page_blocked",
+            side_effect=lambda page, stage_name: None,
         ):
             result = enter_company_detail_page_module.enter_company_detail_page(
                 page, "小米通讯技术有限公司"
             )
 
         self.assertIs(result, popup_page)
+        self.assertEqual(popup_page.calls, [("wait_for_load_state", "domcontentloaded")])
 
     def test_enter_company_detail_page_executes_expected_steps(self) -> None:
         logger.info("[测试2] 验证模块按预期顺序执行主页搜索和打开详情页")
-        popup_page = object()
+        popup_page = PopupPage()
         page = FakePage(popup_page)
         company_name = "小米通讯技术有限公司"
 
         with patch.object(
             enter_company_detail_page_module,
             "run_step",
-            side_effect=lambda action, step_name, **kwargs: action(),
+            side_effect=build_success_step_result,
+        ), patch.object(
+            enter_company_detail_page_module,
+            "_wait_if_page_blocked",
+            side_effect=lambda page, stage_name: None,
         ):
             enter_company_detail_page_module.enter_company_detail_page(page, company_name)
 

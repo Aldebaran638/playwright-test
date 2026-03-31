@@ -19,57 +19,59 @@ def extract_company_risk_page(
     max_capture_count: int = DEFAULT_MAX_CAPTURE_COUNT,
     source: str | Path | None = None,
 ) -> dict[str, Any]:
-    # 优先从风险页脚本里的 mm 对象提取数据，避免强依赖展示层 class。
-    logger.info("[模块] 开始提取风险详情页中的 mm 数据")
+    logger.info("[company_risk.page_extractor] 开始提取风险详情页中的 mm 数据")
     run_step(
-        lambda: page.wait_for_selector(".risk-block", timeout=15000),
-        "等待风险详情页主容器加载",
-        page_getter=lambda: page,
+        page.wait_for_selector,
+        ".risk-block",
+        timeout=15000,
+        step_name="等待风险详情页主容器加载",
+        critical=True,
+        retries=1,
     )
 
-    mm_data = run_step(
-        lambda: page.evaluate(
-            """(preferredName) => {
-                const parseScript = (scriptText) => {
-                    const source = scriptText || "";
-                    const match = source.match(/var\\s+mm\\s*=\\s*(\\{[\\s\\S]*\\})\\s*$/);
-                    if (!match) {
-                        return null;
-                    }
-                    return Function('"use strict"; return (' + match[1] + ');')();
-                };
-
-                const blocks = Array.from(document.querySelectorAll(".risk-block"));
-                const visibleBlock = blocks.find((block) => !block.classList.contains("hidden"));
-                const orderedBlocks = visibleBlock
-                    ? [visibleBlock, ...blocks.filter((block) => block !== visibleBlock)]
-                    : blocks;
-
-                const parsedItems = orderedBlocks
-                    .map((block) => {
-                        const script = block.querySelector("script");
-                        return script ? parseScript(script.textContent || "") : null;
-                    })
-                    .filter(Boolean);
-
-                if (preferredName) {
-                    const preferredItem = parsedItems.find((item) => item.name === preferredName);
-                    if (preferredItem) {
-                        return preferredItem;
-                    }
+    mm_data_result = run_step(
+        page.evaluate,
+        """(preferredName) => {
+            const parseScript = (scriptText) => {
+                const source = scriptText || "";
+                const match = source.match(/var\\s+mm\\s*=\\s*(\\{[\\s\\S]*\\})\\s*$/);
+                if (!match) {
+                    return null;
                 }
+                return Function('"use strict"; return (' + match[1] + ');')();
+            };
 
-                return parsedItems[0] || null;
-            }""",
-            preferred_risk_type,
-        ),
-        "解析风险详情页脚本中的 mm 数据",
-        page_getter=lambda: page,
+            const blocks = Array.from(document.querySelectorAll(".risk-block"));
+            const visibleBlock = blocks.find((block) => !block.classList.contains("hidden"));
+            const orderedBlocks = visibleBlock
+                ? [visibleBlock, ...blocks.filter((block) => block !== visibleBlock)]
+                : blocks;
+
+            const parsedItems = orderedBlocks
+                .map((block) => {
+                    const script = block.querySelector("script");
+                    return script ? parseScript(script.textContent || "") : null;
+                })
+                .filter(Boolean);
+
+            if (preferredName) {
+                const preferredItem = parsedItems.find((item) => item.name === preferredName);
+                if (preferredItem) {
+                    return preferredItem;
+                }
+            }
+
+            return parsedItems[0] || null;
+        }""",
+        preferred_risk_type,
+        step_name="解析风险详情页脚本中的 mm 数据",
+        critical=True,
+        retries=0,
     )
-
-    if not mm_data:
+    if mm_data_result.value is None:
         raise RuntimeError("unable to parse risk page data from current page")
 
+    mm_data = mm_data_result.value
     groups: list[dict[str, Any]] = []
     for group in mm_data.get("list", []):
         items: list[dict[str, Any]] = []
@@ -106,4 +108,5 @@ def extract_company_risk_page(
     if source is not None:
         result["source"] = str(source)
 
+    logger.info("[company_risk.page_extractor] 风险详情页提取完成")
     return result

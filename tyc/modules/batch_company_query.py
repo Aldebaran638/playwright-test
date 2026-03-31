@@ -5,10 +5,32 @@ from playwright.sync_api import Page
 
 from tyc.modules.company_metadata import extract_company_metadata
 from tyc.modules.enter_company_detail_page import enter_company_detail_page
-from tyc.modules.run_step import run_step
+from tyc.modules.go_to_home import go_to_home_page
+from tyc.modules.run_step import StepResult, run_step
 
 
 TYC_HOME_URL = "https://www.tianyancha.com/"
+
+
+def _build_company_result(
+    company_name: str,
+    *,
+    success: bool,
+    data: dict[str, Any] | None,
+    error: str = "",
+) -> dict[str, Any]:
+    return {
+        "company_name": company_name,
+        "success": success,
+        "data": data,
+        "error": error,
+    }
+
+
+def _extract_error_message(result: StepResult[Any]) -> str:
+    if result.error is None:
+        return "unknown error"
+    return str(result.error)
 
 
 def query_companies_sequentially(
@@ -19,59 +41,97 @@ def query_companies_sequentially(
     stop_on_error: bool = False,
     return_to_home_each_time: bool = True,
 ) -> list[dict[str, Any]]:
-    # 按顺序逐个查询公司，并把每家公司的执行结果统一收集起来。
+    logger.info(f"[batch_company_query] 开始批量查询公司，总数: {len(company_names)}")
     results: list[dict[str, Any]] = []
 
     for company_name in company_names:
-        logger.info(f"[模块] 开始批量查询公司: {company_name}")
+        logger.info(f"[batch_company_query] 开始处理公司: {company_name}")
         detail_page: Page | None = None
-
         try:
-            # 每轮回到首页可以降低页面状态污染，优先保证稳定性。
             if return_to_home_each_time:
-                run_step(
-                    lambda: page.goto(home_url, wait_until="domcontentloaded"),
-                    f"打开首页以查询公司: {company_name}",
-                    page_getter=lambda: page,
+                home_result = run_step(
+                    go_to_home_page,
+                    page,
+                    home_url=home_url,
+                    step_name=f"回到首页准备查询公司: {company_name}",
+                    critical=False,
+                    retries=0,
                 )
+                if not home_result.ok:
+                    results.append(
+                        _build_company_result(
+                            company_name,
+                            success=False,
+                            data=None,
+                            error=_extract_error_message(home_result),
+                        )
+                    )
+                    logger.warning(f"[batch_company_query] 公司查询失败，已跳过: {company_name}")
+                    if stop_on_error:
+                        break
+                    continue
 
-            detail_page = enter_company_detail_page(page, company_name)
-            run_step(
-                lambda: detail_page.wait_for_load_state("domcontentloaded"),
-                f"等待详情页加载完成: {company_name}",
-                page_getter=lambda: detail_page,
+            detail_result = run_step(
+                enter_company_detail_page,
+                page,
+                company_name,
+                step_name=f"进入公司详情页: {company_name}",
+                critical=False,
+                retries=0,
             )
-            # 从详情页提取公司数据
-            company_data = extract_company_metadata(detail_page, source=detail_page.url)
-            results.append(
-                {
-                    "company_name": company_name,
-                    "success": True,
-                    "data": company_data,
-                    "error": "",
-                }
-            )
-            logger.info(f"[模块] 公司查询完成: {company_name}")
-        except Exception as exc:
-            logger.error(f"[模块] 公司查询失败: {company_name} -> {exc}")
-            results.append(
-                {
-                    "company_name": company_name,
-                    "success": False,
-                    "data": None,
-                    "error": str(exc),
-                }
-            )
+            if not detail_result.ok or detail_result.value is None:
+                results.append(
+                    _build_company_result(
+                        company_name,
+                        success=False,
+                        data=None,
+                        error=_extract_error_message(detail_result),
+                    )
+                )
+                logger.warning(f"[batch_company_query] 公司详情页打开失败，已跳过: {company_name}")
+                if stop_on_error:
+                    break
+                continue
 
-            if stop_on_error:
-                break
+            detail_page = detail_result.value
+            metadata_result = run_step(
+                extract_company_metadata,
+                detail_page,
+                source=detail_page.url,
+                step_name=f"提取公司元信息: {company_name}",
+                critical=False,
+                retries=0,
+            )
+            if not metadata_result.ok or metadata_result.value is None:
+                results.append(
+                    _build_company_result(
+                        company_name,
+                        success=False,
+                        data=None,
+                        error=_extract_error_message(metadata_result),
+                    )
+                )
+                logger.warning(f"[batch_company_query] 公司元信息提取失败，已跳过: {company_name}")
+                if stop_on_error:
+                    break
+                continue
+
+            results.append(
+                _build_company_result(
+                    company_name,
+                    success=True,
+                    data=metadata_result.value,
+                )
+            )
+            logger.info(f"[batch_company_query] 公司查询完成: {company_name}")
         finally:
-            # 新开的详情页在每轮结束后关闭，避免标签页越积越多。
+            # 每轮结束后关闭详情页，避免标签页累计影响后续查询。
             if detail_page is not None and detail_page is not page:
                 try:
                     if not detail_page.is_closed():
                         detail_page.close()
                 except Exception:
-                    logger.warning(f"[模块] 关闭详情页时出现异常: {company_name}")
+                    logger.warning(f"[batch_company_query] 关闭详情页时出现异常: {company_name}")
 
+    logger.info(f"[batch_company_query] 批量查询完成，结果数: {len(results)}")
     return results

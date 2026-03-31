@@ -11,41 +11,30 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from tyc.modules.page_guard import PageGuardResult
-from tyc.modules.run_step import run_step
+from tyc.modules.run_step import StepResult, run_step
 
 
 logger.remove()
 logger.add(sys.stdout, format="{message}")
 
 
-class FakePage:
-    def __init__(self) -> None:
-        self.wait_calls: list[int] = []
-
-    def wait_for_timeout(self, timeout_ms: int) -> None:
-        self.wait_calls.append(timeout_ms)
-
-
 class TestRunStep(unittest.TestCase):
-    def test_run_step_returns_action_result_after_random_delay(self) -> None:
-        logger.info("[测试1] 验证 run_step() 成功后会返回结果并执行随机等待")
-        sleep_calls: list[float] = []
+    def test_run_step_returns_step_result_on_success(self) -> None:
+        logger.info("[测试1] 验证 run_step() 成功时会返回 StepResult(ok=True)")
 
         result = run_step(
             lambda: "ok",
-            "成功步骤",
-            sleep_func=sleep_calls.append,
-            random_func=lambda start, end: 1.25,
+            step_name="成功步骤",
         )
 
-        self.assertEqual(result, "ok")
-        self.assertEqual(sleep_calls, [1.25])
+        self.assertIsInstance(result, StepResult)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.value, "ok")
+        self.assertIsNone(result.error)
 
-    def test_run_step_retries_on_timeout_and_then_succeeds(self) -> None:
-        logger.info("[测试2] 验证 run_step() 在普通超时后会自动重试")
+    def test_run_step_retries_and_then_succeeds(self) -> None:
+        logger.info("[测试2] 验证 run_step() 会按 retries 次数进行重试")
         attempts = {"count": 0}
-        sleep_calls: list[float] = []
 
         def flaky_action() -> str:
             attempts["count"] += 1
@@ -55,53 +44,32 @@ class TestRunStep(unittest.TestCase):
 
         result = run_step(
             flaky_action,
-            "超时后成功的步骤",
-            sleep_func=sleep_calls.append,
-            random_func=lambda start, end: 0.75,
+            step_name="超时后成功的步骤",
+            retries=2,
         )
 
-        self.assertEqual(result, "done")
+        self.assertTrue(result.ok)
+        self.assertEqual(result.value, "done")
         self.assertEqual(attempts["count"], 3)
-        self.assertEqual(sleep_calls, [0.75])
 
-    def test_run_step_waits_for_recovery_when_illegal_page_detected(self) -> None:
-        logger.info("[测试3] 验证 run_step() 失败后检测到非法页时会等待恢复再继续")
-        attempts = {"count": 0}
-        fake_page = FakePage()
-        recovery_calls: list[str] = []
-        check_calls = {"count": 0}
+    def test_run_step_returns_failed_step_result_when_not_critical(self) -> None:
+        logger.info("[测试3] 验证非关键步骤失败后会返回 StepResult(ok=False)")
 
-        def flaky_action() -> str:
-            attempts["count"] += 1
-            if attempts["count"] == 1:
-                raise PlaywrightTimeoutError("timeout")
-            return "recovered"
-
-        def fake_check_page(page):
-            check_calls["count"] += 1
-            if check_calls["count"] == 1:
-                return PageGuardResult(True, "verification_page", "need verify")
-            return PageGuardResult(False, "normal_page", "ok")
-
-        def fake_recovery(page_getter, *, check_page_func):
-            recovery_calls.append("called")
+        def always_timeout() -> None:
+            raise PlaywrightTimeoutError("timeout")
 
         result = run_step(
-            flaky_action,
-            "非法页恢复步骤",
-            page_getter=lambda: fake_page,
-            sleep_func=lambda seconds: None,
-            random_func=lambda start, end: 0.5,
-            check_page_func=fake_check_page,
-            recovery_func=fake_recovery,
+            always_timeout,
+            step_name="失败但可跳过的步骤",
+            retries=1,
         )
 
-        self.assertEqual(result, "recovered")
-        self.assertEqual(attempts["count"], 2)
-        self.assertEqual(recovery_calls, ["called"])
+        self.assertFalse(result.ok)
+        self.assertIsNone(result.value)
+        self.assertIsInstance(result.error, PlaywrightTimeoutError)
 
-    def test_run_step_raises_after_max_retries(self) -> None:
-        logger.info("[测试4] 验证 run_step() 超过最大重试次数后会抛出异常")
+    def test_run_step_raises_when_critical_step_fails(self) -> None:
+        logger.info("[测试4] 验证关键步骤失败后会直接抛出异常")
         attempts = {"count": 0}
 
         def always_timeout() -> None:
@@ -111,9 +79,9 @@ class TestRunStep(unittest.TestCase):
         with self.assertRaises(PlaywrightTimeoutError):
             run_step(
                 always_timeout,
-                "始终超时的步骤",
-                sleep_func=lambda seconds: None,
-                random_func=lambda start, end: 0.5,
+                step_name="关键失败步骤",
+                critical=True,
+                retries=3,
             )
 
         self.assertEqual(attempts["count"], 4)

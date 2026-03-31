@@ -98,3 +98,19 @@ tyc/main文件的流程改为:
 检查当前是否登录->调用"搜索并进入详情页"模块->调用 提取公司元信息 模块->退出
 
 注意,我需要一个全局变量来设置我要查的公司信息的全称
+
+
+- 将tyc\modules\enter_company_detail_page.py逻辑改为：只要搜索出来的结果中，结果公司名称包含company_name（也就是**company_name**），那么就视为合法目标
+
+- MODULE_GENERATION_GUIDE.md
+参考这个文档(尤其是其中的第六第七点),改造tyc\modules\business_risk文件夹下的模块/流程函数
+以及tyc\modules\batch_company_query.py
+tyc\modules\browser_context.py
+tyc\modules\enter_company_detail_page.py
+tyc\modules\go_to_home.py
+tyc\modules\login_state.py
+tyc\modules\page_guard.py
+tyc\modules\run_step.py
+tyc\modules\wait_for_recovery.py
+这些文件
+如果你在改造过程中有什么疑问，随时提示我

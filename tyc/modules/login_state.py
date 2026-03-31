@@ -16,6 +16,7 @@ LOGGED_OUT_SELECTOR = ".tyc-nav-user-btn"
 def normalize_text(value: str | None) -> str:
     if not value:
         return ""
+
     value = value.replace("\xa0", " ")
     value = re.sub(r"\s+", " ", value)
     return value.strip()
@@ -43,20 +44,20 @@ def get_login_state(page: Page) -> int:
 
 
 def wait_until_logged_in(page: Page) -> None:
-    logger.info("[模块] 开始检查登录状态")
+    logger.info("[login_state] 开始检查当前页面的登录状态")
 
     while True:
         current_state = get_login_state(page)
 
-        # 已登录时立即结束阻塞，继续主流程。
+        # 已登录时立即结束阻塞，交还主流程继续执行。
         if current_state == LOGGED_IN:
-            logger.info("[模块] 已检测到登录完成，继续执行后续流程")
+            logger.info("[login_state] 已检测到登录完成，继续执行后续流程")
             return
 
-        # 未登录时提醒用户手动登录，并保持当前页面等待状态。
+        # 未登录时提醒用户手动登录，未知状态时继续轮询观察。
         if current_state == LOGGED_OUT:
-            logger.warning("[模块] 当前未登录，请在浏览器中完成登录，系统会每 3 秒自动复查一次")
+            logger.warning("[login_state] 当前未登录，请在浏览器中完成登录，系统会每 3 秒复查一次")
         else:
-            logger.warning("[模块] 暂未识别出明确登录状态，系统会每 3 秒继续检查一次")
+            logger.warning("[login_state] 暂未识别出明确登录状态，系统会每 3 秒继续检查一次")
 
         page.wait_for_timeout(CHECK_INTERVAL_MS)
