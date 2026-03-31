@@ -7,7 +7,6 @@ from playwright.sync_api import Page
 
 from tyc.modules.business_risk.date_range_filter import extract_sections_by_date
 from tyc.modules.business_risk.navigator import click_business_risk_tab
-from tyc.modules.business_risk.tag_nav_extractor import extract_tag_nav_texts
 from tyc.modules.enter_company_detail_page import enter_company_detail_page
 from tyc.modules.go_to_home import go_to_home_page
 from tyc.modules.run_step import StepResult, run_step
@@ -58,7 +57,6 @@ def process_business_risk(
         company_result: dict[str, Any] = {
             "company_name": company_name,
             "success": False,
-            "tag_nav_texts": [],
             "sections_data": [],
             "error": "",
         }
@@ -107,19 +105,6 @@ def process_business_risk(
                 logger.warning(f"[business_risk.main] 经营风险标签打开失败，已跳过公司: {company_name}")
                 continue
 
-            tag_result = run_step(
-                extract_tag_nav_texts,
-                detail_page,
-                step_name=f"提取经营风险标签导航: {company_name}",
-                critical=False,
-                retries=0,
-            )
-            if not tag_result.ok or tag_result.value is None:
-                company_result["error"] = _extract_error_message(tag_result)
-                results.append(company_result)
-                logger.warning(f"[business_risk.main] 标签导航提取失败，已跳过公司: {company_name}")
-                continue
-
             sections_result = run_step(
                 extract_sections_by_date,
                 detail_page,
@@ -137,7 +122,6 @@ def process_business_risk(
                 continue
 
             company_result["success"] = True
-            company_result["tag_nav_texts"] = tag_result.value
             company_result["sections_data"] = sections_result.value
             results.append(company_result)
             logger.info(f"[business_risk.main] 公司经营风险提取完成: {company_name}")
