@@ -113,7 +113,7 @@ def _filter_rows_by_date(
     return filtered_rows
 
 
-def extract_sections_by_date(
+def extract_lawsuit_sections_by_date(
     page: Page,
     date_start: str,
     date_end: str,
@@ -121,22 +121,22 @@ def extract_sections_by_date(
 ) -> list[dict[str, Any]]:
     start, end = _validate_date_range(date_start, date_end)
     logger.info(
-        f"[business_risk.date_range_filter] 开始提取日期范围内的板块数据: {date_start} ~ {date_end}"
+        f"[business_risk.lawsuit_extractor] 开始提取日期范围内的法律诉讼板块数据: {date_start} ~ {date_end}"
     )
 
     elements_result = run_step(
         page.locator("[data-dim]").all,
-        step_name="获取所有带有 data-dim 的板块",
+        step_name="获取所有带有 data-dim 的法律诉讼板块",
         critical=False,
         retries=0,
     )
     if not elements_result.ok or elements_result.value is None:
-        logger.warning("[business_risk.date_range_filter] 未获取到任何 data-dim 板块")
+        logger.warning("[business_risk.lawsuit_extractor] 未获取到任何 data-dim 板块")
         return []
 
     result: list[dict[str, Any]] = []
 
-    # 逐个处理经营风险板块，单个板块失败不影响其他板块继续提取。
+    # 逐个处理法律诉讼板块，单个板块失败不影响其他板块继续提取。
     for section in elements_result.value:
         dim_result = run_step(
             section.get_attribute,
@@ -147,7 +147,7 @@ def extract_sections_by_date(
         )
         dim = str(dim_result.value or "").strip()
         if not dim:
-            logger.warning("[business_risk.date_range_filter] 遇到没有 data-dim 的板块，已跳过")
+            logger.warning("[business_risk.lawsuit_extractor] 遇到没有 data-dim 的板块，已跳过")
             continue
 
         try:
@@ -170,20 +170,20 @@ def extract_sections_by_date(
                 retries=0,
             )
             if not snapshot_result.ok or snapshot_result.value is None:
-                logger.warning(f"[business_risk.date_range_filter] 板块快照提取失败，已跳过: {dim}")
+                logger.warning(f"[business_risk.lawsuit_extractor] 板块快照提取失败，已跳过: {dim}")
                 continue
 
             snapshot = snapshot_result.value
             section_title = str(snapshot.get("section_title") or "未知板块")
             if not snapshot.get("has_table"):
-                logger.warning(f"[business_risk.date_range_filter] 板块未找到表格，已跳过: {section_title}")
+                logger.warning(f"[business_risk.lawsuit_extractor] 板块未找到表格，已跳过: {section_title}")
                 continue
 
             headers = [str(item) for item in snapshot.get("headers", [])]
             rows = [[str(cell) for cell in row] for row in snapshot.get("rows", [])]
             date_col_indices = _find_date_column_indices(headers, rows)
             if not date_col_indices:
-                logger.warning(f"[business_risk.date_range_filter] 板块未找到日期列，已跳过: {section_title}")
+                logger.warning(f"[business_risk.lawsuit_extractor] 板块未找到日期列，已跳过: {section_title}")
                 continue
 
             field_names = _build_field_names(headers, rows)
@@ -200,12 +200,12 @@ def extract_sections_by_date(
             if len(filtered_rows) > max_rows:
                 filtered_rows = filtered_rows[:max_rows]
                 logger.info(
-                    f"[business_risk.date_range_filter] 板块抓取达到上限，板块: {section_title}，数量: {len(filtered_rows)}"
+                    f"[business_risk.lawsuit_extractor] 板块抓取达到上限，板块: {section_title}，数量: {len(filtered_rows)}"
                 )
 
             if not filtered_rows:
                 logger.info(
-                    f"[business_risk.date_range_filter] 板块存在日期列，但没有命中范围数据: {section_title}"
+                    f"[business_risk.lawsuit_extractor] 板块存在日期列，但没有命中范围数据: {section_title}"
                 )
                 continue
 
@@ -217,11 +217,11 @@ def extract_sections_by_date(
                 }
             )
             logger.info(
-                f"[business_risk.date_range_filter] 板块提取完成，板块: {section_title}，命中行数: {len(filtered_rows)}"
+                f"[business_risk.lawsuit_extractor] 板块提取完成，板块: {section_title}，命中行数: {len(filtered_rows)}"
             )
         except Exception as exc:
-            logger.warning(f"[business_risk.date_range_filter] 板块处理失败，已跳过: {dim} -> {exc}")
+            logger.warning(f"[business_risk.lawsuit_extractor] 板块处理失败，已跳过: {dim} -> {exc}")
             continue
 
-    logger.info(f"[business_risk.date_range_filter] 所有板块提取完成，有效板块数: {len(result)}")
+    logger.info(f"[business_risk.lawsuit_extractor] 所有板块提取完成，有效板块数: {len(result)}")
     return result

@@ -25,16 +25,10 @@ EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\
 EDGE_USER_DATA_DIR = Path(r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Data2")
 
 TARGET_COMPANY_NAMES = [
-    "阿鲁科尔沁旗罕乌拉街道理棠皮肤护理会所",
-    "阿谱赛国际科技发展(北京)有限公司",
-    "艾后生物科技(上海)有限公司",
-    "艾琳生物制造(江苏)有限公司",
-    "艾研实业(上海)有限公司",
-    "艾因特丽(苏州)生物科技有限公司",
-    "爱肌色(河南)生物科技有限公司",
-    "爱乐士(惠州)化妆品有限公司",
-    "爱生泽(上海)生物科技有限公司",
-    "傲雪(广州)生物科技有限公司",
+    "深圳市腾讯计算机系统有限公司",
+    "阿里巴巴（中国）有限公司",
+    "恒太商业管理集团股份有限公司",
+    "深圳市维琪科技股份有限公司",
 ]
 
 
