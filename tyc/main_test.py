@@ -30,6 +30,10 @@ TARGET_COMPANY_NAMES = [
 ]
 TYC_HOME_URL = "https://www.tianyancha.com/"
 
+# 浏览器配置
+EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
+EDGE_USER_DATA_DIR = Path(r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Data2")
+
 def get_entry_page(context: BrowserContext) -> Page:
     # 优先复用持久化上下文里已经打开的首页标签页。
     if context.pages:
@@ -39,7 +43,16 @@ def get_entry_page(context: BrowserContext) -> Page:
 def run(playwright: Playwright) -> None:
     # 初始化 tyc 使用的持久化浏览器环境。
     logger.info(f"[主流程] 当前批量目标公司数: {len(TARGET_COMPANY_NAMES)}")
-    context = launch_tyc_browser_context(playwright)
+    
+    # 启动浏览器上下文
+    context, decision_info = launch_tyc_browser_context(
+        playwright,
+        browser_executable_path=EDGE_EXECUTABLE_PATH,
+        user_data_dir=EDGE_USER_DATA_DIR
+    )
+    
+    # 输出决策信息
+    logger.info(f"[主流程] 浏览器环境决策: {decision_info}")
 
     try:
         page = get_entry_page(context)
