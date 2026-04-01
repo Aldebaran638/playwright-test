@@ -4,6 +4,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, List, Dict
+from datetime import datetime
 
 from loguru import logger
 from playwright.sync_api import Playwright, sync_playwright, Page, BrowserContext
@@ -26,6 +27,10 @@ RISK_SEARCH_URL = "https://www.tianyancha.com/risk"
 # 将输出文件路径改为 tyc\modules\risk_2 文件夹下
 OUTPUT_FILE = Path(__file__).resolve().parent / "risk_2_results.json"
 TYC_HOME_URL = "https://www.tianyancha.com/"
+
+# 日期范围配置
+DATE_START = "2020-01-01"  # 起始日期
+DATE_END = "2026-12-31"    # 结束日期
 
 # Edge 浏览器配置（可根据需要修改）
 EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
@@ -240,6 +245,30 @@ test_companies = [
 ]
 
 
+def validate_dates():
+    """
+    验证日期格式和逻辑
+    
+    Returns:
+        bool: 验证是否成功
+    """
+    try:
+        # 验证日期格式
+        start_date = datetime.strptime(DATE_START, "%Y-%m-%d")
+        end_date = datetime.strptime(DATE_END, "%Y-%m-%d")
+        
+        # 验证结束日期晚于起始日期
+        if end_date <= start_date:
+            logger.error(f"[risk_2.main] 结束日期 {DATE_END} 必须晚于起始日期 {DATE_START}")
+            return False
+        
+        logger.info(f"[risk_2.main] 日期验证通过：{DATE_START} 至 {DATE_END}")
+        return True
+    except ValueError as e:
+        logger.error(f"[risk_2.main] 日期格式错误：{e}")
+        return False
+
+
 def reset_to_search_page(page: Page) -> None:
     """
     将 page 无条件重置回查风险搜索页
@@ -271,6 +300,10 @@ def _save_results(results: List[Dict[str, Any]], failed_companies: List[str]) ->
     """保存结果到文件"""
     try:
         output_data = {
+            "analysis_params": {
+                "date_start": DATE_START,
+                "date_end": DATE_END
+            },
             "successful_results": results,
             "failed_companies": failed_companies
         }
@@ -292,7 +325,7 @@ def get_entry_page(context: BrowserContext) -> Page:
 
 def process_risk_2(
     companies: List[str],
-    *,
+    *, 
     browser_executable_path: Path | None = None,
     user_data_dir: Path | None = None,
     headless: bool = False,
@@ -310,6 +343,11 @@ def process_risk_2(
         tuple[成功结果列表, 失败公司列表]
     """
     logger.info(f"[risk_2.main] 开始处理风险2分析，公司数: {len(companies)}")
+    
+    # 验证日期
+    if not validate_dates():
+        logger.error("[risk_2.main] 日期验证失败，中止流程")
+        return [], companies
     
     # 如果没有提供浏览器配置，使用默认的 Edge 配置
     if browser_executable_path is None:
@@ -467,6 +505,8 @@ def process_risk_2(
                     extract_risk_data,
                     page1,
                     company,
+                    DATE_START,
+                    DATE_END,
                     step_name=f"提取-{company}",
                     critical=False,
                     retries=0,
