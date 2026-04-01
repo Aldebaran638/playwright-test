@@ -15,6 +15,7 @@ from tyc.modules.business_risk.business_risk_main import process_business_risk
 from tyc.modules.go_to_home import go_to_home_page
 from tyc.modules.login_state import wait_until_logged_in
 from tyc.modules.run_step import run_step
+from tyc.target_server_client import send_to_target_server
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,9 +27,7 @@ EDGE_USER_DATA_DIR = Path(r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Da
 
 TARGET_COMPANY_NAMES = [
     "深圳市腾讯计算机系统有限公司",
-    "阿里巴巴（中国）有限公司",
-    "恒太商业管理集团股份有限公司",
-    "深圳市维琪科技股份有限公司",
+
 ]
 
 
@@ -81,6 +80,10 @@ def run(playwright: Playwright) -> None:
 
         logger.info("[主流程] 保存批量查询结果并退出")
         save_company_results(results)
+        
+        # 将结果上传到目标服务器
+        logger.info("[主流程] 将结果上传到目标服务器")
+        send_to_target_server(results)
     finally:
         context.close()
 

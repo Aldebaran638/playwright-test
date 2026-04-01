@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Callable, Generic, TypeVar
 
 from loguru import logger
+from playwright.sync_api import Page, TimeoutError
+
+from tyc.modules.page_guard import check_page
 
 
 T = TypeVar("T")
@@ -27,6 +30,17 @@ def run_step(
     name = step_name or getattr(fn, "__name__", "未命名步骤")
     last_error: Exception | None = None
 
+    # 尝试从参数中获取 page 对象
+    page: Page | None = None
+    for arg in args:
+        if isinstance(arg, Page):
+            page = arg
+            break
+    for key, value in kwargs.items():
+        if isinstance(value, Page):
+            page = value
+            break
+
     for attempt in range(retries + 1):
         if attempt > 0:
             logger.info(f'[run_step] 步骤"{name}" 第{attempt}次重试...')
@@ -38,6 +52,14 @@ def run_step(
             value = fn(*args, **kwargs)
             logger.info(f'[run_step] 步骤"{name}" 执行成功')
             return StepResult(ok=True, value=value, error=None)
+        except TimeoutError as exc:
+            # 当步骤超时时，检查当前页面是否有问题
+            last_error = exc
+            if page:
+                logger.info(f'[run_step] 步骤"{name}" 超时，检查页面状态...')
+                guard_result = check_page(page)
+                if guard_result.is_illegal:
+                    logger.warning(f'[run_step] 页面状态异常: {guard_result.message}')
         except Exception as exc:
             last_error = exc
 
