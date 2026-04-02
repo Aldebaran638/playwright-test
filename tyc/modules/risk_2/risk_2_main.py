@@ -16,7 +16,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from tyc.modules.risk_2.navigate import navigate_to_risk_page
-from tyc.modules.risk_2.extract import extract_risk_data, _extract_date_from_string
+from tyc.modules.risk_2.extract import extract_risk_data
+from tyc.modules.risk_2.paging import (
+    has_valid_date_in_range,
+    should_continue_paging,
+    has_next_page,
+    turn_page,
+)
 from tyc.modules.run_step import run_step, StepResult
 from tyc.modules.browser_context import launch_tyc_browser_context, save_cookies
 from tyc.modules.go_to_home import go_to_home_page
@@ -87,126 +93,6 @@ def validate_dates():
         return True
     except ValueError as e:
         logger.error(f"[risk_2.main] 日期格式错误：{e}")
-        return False
-
-
-def _has_valid_date_in_range(record: Dict[str, Any], start_date: str, end_date: str) -> bool:
-    """
-    检查记录是否有符合日期范围的日期字段
-
-    Args:
-        record: 风险记录
-        start_date: 起始日期字符串
-        end_date: 结束日期字符串
-
-    Returns:
-        bool: True表示有符合日期范围的日期字段，False表示没有
-    """
-    fields = record.get("fields", {})
-
-    for key, value in fields.items():
-        if not any(keyword in key for keyword in ["日期", "时间", "刊登", "发布", "发生"]):
-            continue
-
-        values = value if isinstance(value, list) else [value]
-
-        for one_value in values:
-            date_str = _extract_date_from_string(str(one_value))
-            if not date_str:
-                continue
-
-            try:
-                if len(date_str) == 10:
-                    record_date = datetime.strptime(date_str, "%Y-%m-%d")
-                else:
-                    record_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
-
-                start = datetime.strptime(start_date, "%Y-%m-%d")
-                end = datetime.strptime(end_date, "%Y-%m-%d")
-
-                if start <= record_date <= end:
-                    return True
-            except ValueError:
-                continue
-
-    return False
-
-
-def _should_continue_paging(records: List[Dict[str, Any]], start_date: str, end_date: str) -> bool:
-    """
-    检查是否需要继续翻页
-
-    Args:
-        records: 已抓取的记录列表
-        start_date: 起始日期字符串
-        end_date: 结束日期字符串
-
-    Returns:
-        bool: True表示需要继续翻页，False表示不需要
-    """
-    if not records:
-        return True
-
-    # 检查最后一条记录
-    last_record = records[-1]
-    return _has_valid_date_in_range(last_record, start_date, end_date)
-
-
-def _has_next_page(page: Page) -> bool:
-    """
-    检查是否存在下一页
-
-    Args:
-        page: 页面对象
-
-    Returns:
-        bool: True表示存在下一页，False表示不存在
-    """
-    try:
-        next_button = page.locator(".tic.tic-laydate-next-m")
-        return next_button.count() > 0
-    except Exception:
-        return False
-
-
-def _turn_page(page: Page) -> bool:
-    """
-    执行翻页操作
-
-    Args:
-        page: 页面对象
-
-    Returns:
-        bool: True表示翻页成功，False表示翻页失败
-    """
-    try:
-        # 等待翻页元素出现
-        next_button = page.locator(".tic.tic-laydate-next-m")
-        next_button.wait_for(state="visible", timeout=5000)
-
-        # 点击翻页
-        turn_result = run_step(
-            next_button.click,
-            step_name="点击下一页",
-            critical=True,
-            retries=1,
-        )
-
-        if not turn_result.ok:
-            return False
-
-        # 等待新页面加载完成
-        wait_result = run_step(
-            page.wait_for_load_state,
-            "networkidle",
-            step_name="等待新页面加载",
-            critical=True,
-            retries=2,
-        )
-
-        return wait_result.ok
-    except Exception as e:
-        logger.warning(f"[risk_2.main] 翻页失败: {e}")
         return False
 
 
@@ -472,12 +358,12 @@ def process_risk_2(
                         break
 
                     # 检查最后一条记录的日期是否在范围内
-                    if not _should_continue_paging(all_risk_records, DATE_START, DATE_END):
+                    if not should_continue_paging(all_risk_records, DATE_START, DATE_END):
                         logger.info(f"[risk_2.main] 最后一条记录日期不在范围内，停止翻页")
                         break
 
                     # 检查是否存在下一页
-                    if not _has_next_page(page1):
+                    if not has_next_page(page1):
                         logger.warning(
                             f"[risk_2.main] {company} 没有更多页面，已抓取 {len(all_risk_records)} 条，"
                             f"最大查询条数 {MAX_QUERY_COUNT}"
@@ -485,7 +371,7 @@ def process_risk_2(
                         break
 
                     # 执行翻页
-                    if not _turn_page(page1):
+                    if not turn_page(page1):
                         logger.warning(f"[risk_2.main] 翻页失败（第{page_turn_count + 1}页），停止翻页")
                         extract_success = False
                         break
