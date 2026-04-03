@@ -34,13 +34,13 @@ DEFAULT_RISK_OUTPUT_FILE = "tyc/data/output/risk_2_async_results.json"
 DEFAULT_DAILY_OUTPUT_FILE = "tyc/data/output/risk_2_async_daily_summary.json"
 DEFAULT_SEARCH_URL = "https://www.tianyancha.com/risk"
 DEFAULT_HOME_URL = "https://www.tianyancha.com/"
-DEFAULT_RISK_DATE_START = "2020-01-01"
+DEFAULT_RISK_DATE_START = "2025-10-01"
 DEFAULT_RISK_DATE_END = "2026-12-31"
-DEFAULT_CONVERT_DATE_START = "2026-03-26"
-DEFAULT_CONVERT_DATE_END = "2026-04-02"
+DEFAULT_CONVERT_DATE_START = DEFAULT_RISK_DATE_START
+DEFAULT_CONVERT_DATE_END = DEFAULT_RISK_DATE_END
 DEFAULT_MAX_QUERY_COUNT = 100
 DEFAULT_MAX_PAGE_TURNS = 20
-DEFAULT_WORKER_COUNT = 2
+DEFAULT_WORKER_COUNT = 4
 DEFAULT_BROWSER_EXECUTABLE_PATH = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 DEFAULT_USER_DATA_DIR = r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Data2"
 DEFAULT_HEADLESS = False
@@ -51,7 +51,7 @@ DEFAULT_DB_PORT = 3306
 DEFAULT_DB_USER = "root"
 DEFAULT_DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DEFAULT_DB_NAME = "winkeyai"
-DEFAULT_DB_TABLE = "risk_info"
+DEFAULT_DB_TABLE = "risk_info_test"
 
 
 def build_parser() -> argparse.ArgumentParser:
