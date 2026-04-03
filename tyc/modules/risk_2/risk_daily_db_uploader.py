@@ -149,6 +149,11 @@ def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
                     business_risk_names
                 )
                 VALUES (%s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    legal_litigation_types = VALUES(legal_litigation_types),
+                    legal_litigation_names = VALUES(legal_litigation_names),
+                    business_risk_types = VALUES(business_risk_types),
+                    business_risk_names = VALUES(business_risk_names)
             """
 
             inserted_count = 0
