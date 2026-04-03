@@ -23,15 +23,16 @@ from tyc.modules.risk_2.paging import (
     has_next_page,
     turn_page,
 )
-from tyc.modules.run_step import run_step, StepResult
-from tyc.modules.browser_context import launch_tyc_browser_context, save_cookies
-from tyc.modules.go_to_home import go_to_home_page
-from tyc.modules.login_state import wait_until_logged_in
+from tyc.modules.common.browser_context import launch_tyc_browser_context, save_cookies
+from tyc.modules.common.go_to_home import go_to_home_page
+from tyc.modules.common.login_state import wait_until_logged_in
+from tyc.modules.common.run_step import run_step, StepResult
 
+
+TYC_ROOT = Path(__file__).resolve().parents[2]
 
 RISK_SEARCH_URL = "https://www.tianyancha.com/risk"
-# 将输出文件路径改为 tyc\modules\risk_2 文件夹下
-OUTPUT_FILE = Path(__file__).resolve().parent / "risk_2_results.json"
+OUTPUT_FILE = TYC_ROOT / "data" / "output" / "risk_2_results.json"
 TYC_HOME_URL = "https://www.tianyancha.com/"
 
 # 日期范围配置
@@ -54,7 +55,7 @@ def load_companies_from_file() -> List[str]:
     Returns:
         公司名称列表
     """
-    name_list_path = Path(__file__).resolve().parent.parent / "name_list_test.txt"
+    name_list_path = TYC_ROOT / "data" / "input" / "name_list_test.txt"
     if not name_list_path.exists():
         logger.error(f"[risk_2.main] 公司列表文件不存在: {name_list_path}")
         return []

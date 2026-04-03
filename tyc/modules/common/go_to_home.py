@@ -1,9 +1,9 @@
 from loguru import logger
 from playwright.sync_api import Page
 
-from tyc.modules.page_guard import check_page
-from tyc.modules.run_step import run_step
-from tyc.modules.wait_for_recovery import wait_until_page_recovered
+from tyc.modules.common.page_guard import check_page
+from tyc.modules.common.run_step import run_step
+from tyc.modules.common.wait_for_recovery import wait_until_page_recovered
 
 
 TYC_HOME_URL = "https://www.tianyancha.com/"

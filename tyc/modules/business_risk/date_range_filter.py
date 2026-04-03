@@ -5,7 +5,7 @@ from loguru import logger
 from playwright.sync_api import Locator, Page
 
 from tyc.modules.business_risk.vip_detector import is_vip_section
-from tyc.modules.run_step import run_step
+from tyc.modules.common.run_step import run_step
 
 
 def _parse_date(value: str) -> date | None:

@@ -6,7 +6,7 @@ from typing import Any, Callable, Generic, TypeVar
 from loguru import logger
 from playwright.sync_api import Page, TimeoutError
 
-from tyc.modules.browser.page_guard import check_page
+from tyc.modules.common.page_guard import check_page
 from tyc.modules.email.emailSend import send_email
 
 
@@ -33,7 +33,7 @@ def run_step(
 ) -> StepResult[T]:
     global EMAIL_SENT
     EMAIL_SENT = False
-
+    
     name = step_name or getattr(fn, "__name__", "未命名步骤")
     last_error: Exception | None = None
 
@@ -71,8 +71,7 @@ def run_step(
                     if not EMAIL_SENT:
                         logger.info("[run_step] 发送邮件通知页面异常")
                         subject = "天眼查风险爬虫 - 页面异常"
-                        contents = f"步骤 '{name}' 执行超时，页面状态异常：
-{guard_result.message}"
+                        contents = f"步骤 '{name}' 执行超时，页面状态异常：\n{guard_result.message}"
                         send_email(subject, contents)
                         EMAIL_SENT = True
         except Exception as exc:

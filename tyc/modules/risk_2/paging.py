@@ -8,7 +8,7 @@ from loguru import logger
 from playwright.sync_api import Page
 
 from tyc.modules.risk_2.extract import _extract_date_from_string
-from tyc.modules.run_step import run_step
+from tyc.modules.common.run_step import run_step
 
 
 def has_valid_date_in_range(record: Dict[str, Any], start_date: str, end_date: str) -> bool:

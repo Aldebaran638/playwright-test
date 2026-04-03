@@ -9,9 +9,9 @@ from tyc.modules.business_risk.date_range_filter import extract_sections_by_date
 from tyc.modules.business_risk.navigator import click_business_risk_tab
 from tyc.modules.business_risk.lawsuit_navigator import click_lawsuit_tab
 from tyc.modules.business_risk.lawsuit_extractor import extract_lawsuit_sections_by_date
-from tyc.modules.enter_company_detail_page import enter_company_detail_page
-from tyc.modules.go_to_home import go_to_home_page
-from tyc.modules.run_step import StepResult, run_step
+from tyc.modules.common.go_to_home import go_to_home_page
+from tyc.modules.common.run_step import StepResult, run_step
+from tyc.modules.company_query.enter_company_detail_page import enter_company_detail_page
 
 
 DEFAULT_DATE_START = "2016-01-01"
@@ -19,7 +19,7 @@ DEFAULT_DATE_END = "2028-01-01"
 DEFAULT_MAX_ROWS = 20
 
 # 定义输出文件路径
-OUTPUT_FILE = Path(__file__).resolve().parents[2] / "company_text.json"
+OUTPUT_FILE = Path(__file__).resolve().parents[2] / "data" / "output" / "business_risk_results.json"
 
 
 def _extract_error_message(result: StepResult[Any]) -> str:

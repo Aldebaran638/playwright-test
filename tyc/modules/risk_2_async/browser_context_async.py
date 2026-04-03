@@ -15,7 +15,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-STEALTH_SCRIPT_PATH = Path(__file__).resolve().parents[1] / "assets" / "stealth.min.js"
+STEALTH_SCRIPT_PATH = Path(__file__).resolve().parents[1] / "common" / "assets" / "stealth.min.js"
 COOKIES_FILE_PATH = PROJECT_ROOT / "cookies.json"
 
 

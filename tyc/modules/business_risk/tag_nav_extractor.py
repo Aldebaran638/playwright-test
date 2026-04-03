@@ -3,7 +3,7 @@ import re
 from loguru import logger
 from playwright.sync_api import Page
 
-from tyc.modules.run_step import run_step
+from tyc.modules.common.run_step import run_step
 
 
 def _split_tag_text(raw_text: str) -> tuple[str, str] | None:

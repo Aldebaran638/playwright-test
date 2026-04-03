@@ -3,7 +3,7 @@ from datetime import datetime
 import re
 
 from playwright.sync_api import Page, Locator
-from tyc.modules.run_step import run_step
+from tyc.modules.common.run_step import run_step
 
 
 def extract_risk_data(page: Page, company_name: str, start_date: str, end_date: str) -> List[Dict[str, Any]]:

@@ -3,7 +3,7 @@ from typing import Callable
 from loguru import logger
 from playwright.sync_api import Page
 
-from tyc.modules.browser.page_guard import PageGuardResult, check_page
+from tyc.modules.common.page_guard import PageGuardResult, check_page
 
 
 WAIT_INTERVAL_MS = 3000

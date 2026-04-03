@@ -1,7 +1,7 @@
 from loguru import logger
 from playwright.sync_api import Page
 
-from tyc.modules.run_step import run_step
+from tyc.modules.common.run_step import run_step
 
 
 VIP_KEYWORDS = ["VIP", "开通", "会员", "¥", "支付"]

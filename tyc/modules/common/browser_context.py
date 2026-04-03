@@ -9,7 +9,7 @@ from playwright.sync_api import BrowserContext, Playwright
 from tyc.modules.common.run_step import run_step
 
 
-STEALTH_SCRIPT_PATH = Path(__file__).resolve().parents[1] / "assets" / "stealth.min.js"
+STEALTH_SCRIPT_PATH = Path(__file__).resolve().parent / "assets" / "stealth.min.js"
 COOKIES_FILE_PATH = Path(__file__).resolve().parents[2] / "cookies.json"
 
 
@@ -30,17 +30,21 @@ class BrowserContextStrategy:
     description: str
     factory: Callable[[], BrowserContext]
 
+
 def _ensure_stealth_script_exists() -> None:
     if not STEALTH_SCRIPT_PATH.exists():
         raise FileNotFoundError(f"missing stealth script: {STEALTH_SCRIPT_PATH}")
+
 
 def _ensure_browser_executable(path: Path) -> None:
     if not path.exists() or not path.is_file():
         raise FileNotFoundError(f"browser executable not found: {path}")
 
+
 def _ensure_user_data_dir(path: Path) -> None:
     if not path.exists() or not path.is_dir():
         raise FileNotFoundError(f"user data directory not found: {path}")
+
 
 def _build_strategies(
     playwright: Playwright,

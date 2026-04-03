@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from loguru import logger
 from playwright.async_api import BrowserContext, Page, async_playwright
@@ -30,28 +31,30 @@ from tyc.modules.risk_2_async.paging_async import (
 from tyc.modules.risk_2_async.run_step_async import run_step_async
 
 
-RISK_SEARCH_URL = "https://www.tianyancha.com/risk"
-TYC_HOME_URL = "https://www.tianyancha.com/"
-OUTPUT_FILE = Path(__file__).resolve().parent / "risk_2_async_results.json"
+@dataclass(slots=True)
+class Risk2AsyncConfig:
+    search_url: str
+    home_url: str
+    date_start: str
+    date_end: str
+    max_query_count: int
+    max_page_turns: int
+    worker_count: int
+    browser_executable_path: Path | None
+    user_data_dir: Path | None
+    headless: bool
+    pause_every_n_companies: int
+    pause_seconds: float
 
-DATE_START = "2020-01-01"
-DATE_END = "2026-12-31"
-MAX_QUERY_COUNT = 100
-MAX_PAGE_TURNS = 20
-DEVELOPER_WORKER_COUNT = 3
 
-EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
-EDGE_USER_DATA_DIR = Path(r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Data2")
-
-
-def load_companies_from_file() -> List[str]:
-    name_list_path = Path(__file__).resolve().parents[1] / "name_list_test.txt"
-    if not name_list_path.exists():
-        logger.error(f"[risk_2_async.main] 公司列表文件不存在: {name_list_path}")
+def load_companies_from_file(input_file: str | Path) -> list[str]:
+    input_path = Path(input_file)
+    if not input_path.exists():
+        logger.error(f"[risk_2_async.main] 公司列表文件不存在: {input_path}")
         return []
 
     try:
-        with open(name_list_path, "r", encoding="utf-8") as file_obj:
+        with open(input_path, "r", encoding="utf-8") as file_obj:
             companies = [line.strip() for line in file_obj if line.strip()]
         logger.info(f"[risk_2_async.main] 从文件中读取了 {len(companies)} 个公司")
         return companies
@@ -60,27 +63,27 @@ def load_companies_from_file() -> List[str]:
         return []
 
 
-def validate_dates() -> bool:
+def validate_dates(date_start: str, date_end: str) -> bool:
     try:
-        start_date = datetime.strptime(DATE_START, "%Y-%m-%d")
-        end_date = datetime.strptime(DATE_END, "%Y-%m-%d")
+        start_date = datetime.strptime(date_start, "%Y-%m-%d")
+        end_date = datetime.strptime(date_end, "%Y-%m-%d")
         if end_date <= start_date:
-            logger.error(f"[risk_2_async.main] 结束日期 {DATE_END} 必须晚于起始日期 {DATE_START}")
+            logger.error(f"[risk_2_async.main] 结束日期 {date_end} 必须晚于起始日期 {date_start}")
             return False
-        logger.info(f"[risk_2_async.main] 日期验证通过：{DATE_START} 至 {DATE_END}")
+        logger.info(f"[risk_2_async.main] 日期验证通过：{date_start} 至 {date_end}")
         return True
     except ValueError as exc:
         logger.error(f"[risk_2_async.main] 日期格式错误：{exc}")
         return False
 
 
-def split_companies_evenly(companies: List[str], worker_count: int) -> List[List[str]]:
+def split_companies_evenly(companies: list[str], worker_count: int) -> list[list[str]]:
     if not companies:
         return []
 
     actual_worker_count = max(1, min(worker_count, len(companies)))
     base_size, remainder = divmod(len(companies), actual_worker_count)
-    chunks: List[List[str]] = []
+    chunks: list[list[str]] = []
 
     start = 0
     for index in range(actual_worker_count):
@@ -94,11 +97,11 @@ def split_companies_evenly(companies: List[str], worker_count: int) -> List[List
     return chunks
 
 
-async def reset_to_search_page_async(page: Page) -> None:
+async def reset_to_search_page_async(page: Page, *, search_url: str) -> None:
     logger.info("[risk_2_async.main] 重置到查风险搜索页")
     await run_step_async(
         page.goto,
-        RISK_SEARCH_URL,
+        search_url,
         step_name="跳转到查风险搜索页",
         critical=True,
         retries=1,
@@ -111,35 +114,35 @@ async def reset_to_search_page_async(page: Page) -> None:
     )
 
 
-def _save_results(
-    results: List[Dict[str, Any]],
-    failed_companies: List[str],
+def save_risk_results(
+    output_file: str | Path,
+    results: list[dict[str, Any]],
+    failed_companies: list[str],
+    *,
+    date_start: str,
+    date_end: str,
     worker_count: int,
 ) -> None:
-    try:
-        output_data = {
-            "analysis_params": {
-                "date_start": DATE_START,
-                "date_end": DATE_END,
-                "worker_count": worker_count,
-            },
-            "successful_results": results,
-            "failed_companies": failed_companies,
-        }
-        OUTPUT_FILE.write_text(
-            json.dumps(output_data, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        logger.info(f"[risk_2_async.main] 已保存结果到: {OUTPUT_FILE}")
-    except Exception as exc:
-        logger.error(f"[risk_2_async.main] 保存结果失败: {exc}")
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_data = {
+        "analysis_params": {
+            "date_start": date_start,
+            "date_end": date_end,
+            "worker_count": worker_count,
+        },
+        "successful_results": results,
+        "failed_companies": failed_companies,
+    }
+    output_path.write_text(
+        json.dumps(output_data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    logger.info(f"[risk_2_async.main] 已保存结果到: {output_path}")
 
 
-def _build_company_result(company: str, risk_records: Any) -> Dict[str, Any]:
-    if isinstance(risk_records, list):
-        normalized_records = risk_records
-    else:
-        normalized_records = []
+def _build_company_result(company: str, risk_records: Any) -> dict[str, Any]:
+    normalized_records = risk_records if isinstance(risk_records, list) else []
     return {
         "company_name": company,
         "success": True,
@@ -149,9 +152,9 @@ def _build_company_result(company: str, risk_records: Any) -> Dict[str, Any]:
 
 def _abort_worker(
     worker_id: int,
-    companies: List[str],
+    companies: list[str],
     next_index: int,
-    failed_companies: List[str],
+    failed_companies: list[str],
     reason: str,
 ) -> None:
     remaining = companies[next_index:]
@@ -162,18 +165,22 @@ def _abort_worker(
 
 async def process_company_batch_async(
     page: Page,
-    companies: List[str],
+    companies: list[str],
     worker_id: int,
-) -> tuple[List[Dict[str, Any]], List[str]]:
-    results: List[Dict[str, Any]] = []
-    failed_companies: List[str] = []
+    *,
+    config: Risk2AsyncConfig,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    results: list[dict[str, Any]] = []
+    failed_companies: list[str] = []
 
     logger.info(f"[risk_2_async.worker{worker_id}] 开始处理分片，公司数: {len(companies)}")
 
     for index, company in enumerate(companies):
-        if index > 0 and index % 10 == 0:
-            logger.info(f"[risk_2_async.worker{worker_id}] 已处理10个公司，开始延迟5秒")
-            await asyncio.sleep(5)
+        if config.pause_every_n_companies > 0 and index > 0 and index % config.pause_every_n_companies == 0:
+            logger.info(
+                f"[risk_2_async.worker{worker_id}] 已处理 {config.pause_every_n_companies} 个公司，开始暂停 {config.pause_seconds} 秒"
+            )
+            await asyncio.sleep(config.pause_seconds)
 
         logger.info(
             f"[risk_2_async.worker{worker_id}] 开始处理公司: {company} "
@@ -191,7 +198,7 @@ async def process_company_batch_async(
         if not nav.ok:
             failed_companies.append(company)
             try:
-                await reset_to_search_page_async(page)
+                await reset_to_search_page_async(page, search_url=config.search_url)
             except Exception:
                 _abort_worker(worker_id, companies, index + 1, failed_companies, "导航失败后重置搜索页失败")
                 break
@@ -199,23 +206,23 @@ async def process_company_batch_async(
 
         if not nav.value:
             try:
-                await reset_to_search_page_async(page)
+                await reset_to_search_page_async(page, search_url=config.search_url)
             except Exception:
                 _abort_worker(worker_id, companies, index + 1, failed_companies, "未找到风险信息后重置搜索页失败")
                 break
             continue
 
-        all_risk_records: List[Dict[str, Any]] = []
+        all_risk_records: list[dict[str, Any]] = []
         page_turn_count = 0
         extract_success = True
 
-        while page_turn_count <= MAX_PAGE_TURNS and len(all_risk_records) < MAX_QUERY_COUNT:
+        while page_turn_count <= config.max_page_turns and len(all_risk_records) < config.max_query_count:
             ext = await run_step_async(
                 extract_risk_data_async,
                 page,
                 company,
-                DATE_START,
-                DATE_END,
+                config.date_start,
+                config.date_end,
                 step_name=f"worker{worker_id}-提取-{company}-第{page_turn_count + 1}页",
                 critical=False,
                 retries=0,
@@ -227,9 +234,9 @@ async def process_company_batch_async(
             if isinstance(ext.value, list):
                 all_risk_records.extend(ext.value)
 
-            if len(all_risk_records) >= MAX_QUERY_COUNT:
+            if len(all_risk_records) >= config.max_query_count:
                 break
-            if not should_continue_paging(all_risk_records, DATE_START, DATE_END):
+            if not should_continue_paging(all_risk_records, config.date_start, config.date_end):
                 break
             if not await has_next_page_async(page):
                 break
@@ -241,7 +248,7 @@ async def process_company_batch_async(
         if not extract_success:
             failed_companies.append(company)
             try:
-                await reset_to_search_page_async(page)
+                await reset_to_search_page_async(page, search_url=config.search_url)
             except Exception:
                 _abort_worker(worker_id, companies, index + 1, failed_companies, "提取失败后重置搜索页失败")
                 break
@@ -250,7 +257,7 @@ async def process_company_batch_async(
         results.append(_build_company_result(company, all_risk_records))
 
         try:
-            await reset_to_search_page_async(page)
+            await reset_to_search_page_async(page, search_url=config.search_url)
         except Exception:
             _abort_worker(worker_id, companies, index + 1, failed_companies, "正常完成后重置搜索页失败")
             break
@@ -260,28 +267,20 @@ async def process_company_batch_async(
 
 
 async def process_risk_2_async(
-    companies: List[str],
+    companies: list[str],
     *,
-    worker_count: int,
-    browser_executable_path: Path | None = None,
-    user_data_dir: Path | None = None,
-    headless: bool = False,
-) -> tuple[List[Dict[str, Any]], List[str]]:
+    config: Risk2AsyncConfig,
+) -> tuple[list[dict[str, Any]], list[str]]:
     logger.info(f"[risk_2_async.main] 开始处理风险2分析，公司数: {len(companies)}")
 
-    if worker_count < 1:
-        raise ValueError(f"worker_count 必须大于等于 1，当前值: {worker_count}")
+    if config.worker_count < 1:
+        raise ValueError(f"worker_count 必须大于等于 1，当前值: {config.worker_count}")
 
-    if not validate_dates():
+    if not validate_dates(config.date_start, config.date_end):
         return [], companies
 
-    if browser_executable_path is None:
-        browser_executable_path = EDGE_EXECUTABLE_PATH
-    if user_data_dir is None:
-        user_data_dir = EDGE_USER_DATA_DIR
-
-    results: List[Dict[str, Any]] = []
-    failed_companies: List[str] = []
+    results: list[dict[str, Any]] = []
+    failed_companies: list[str] = []
 
     async with async_playwright() as playwright:
         context: BrowserContext | None = None
@@ -290,9 +289,9 @@ async def process_risk_2_async(
             context_result = await run_step_async(
                 launch_tyc_browser_context_async,
                 playwright,
-                browser_executable_path,
-                user_data_dir,
-                headless,
+                config.browser_executable_path,
+                config.user_data_dir,
+                config.headless,
                 step_name="启动异步浏览器上下文",
                 critical=True,
                 retries=0,
@@ -306,7 +305,7 @@ async def process_risk_2_async(
             page0 = context.pages[0] if context.pages else await context.new_page()
             await run_step_async(
                 page0.goto,
-                TYC_HOME_URL,
+                config.home_url,
                 wait_until="domcontentloaded",
                 step_name="打开天眼查首页",
                 critical=True,
@@ -315,17 +314,17 @@ async def process_risk_2_async(
             await wait_until_logged_in_async(page0)
             await save_cookies_async(context)
 
-            company_chunks = split_companies_evenly(companies, worker_count)
-            worker_plans: List[tuple[int, Page, List[str]]] = []
+            company_chunks = split_companies_evenly(companies, config.worker_count)
+            worker_plans: list[tuple[int, Page, list[str]]] = []
 
             for worker_id, company_chunk in enumerate(company_chunks, start=1):
                 worker_page = await context.new_page()
-                await reset_to_search_page_async(worker_page)
+                await reset_to_search_page_async(worker_page, search_url=config.search_url)
                 worker_plans.append((worker_id, worker_page, company_chunk))
                 logger.info(f"[risk_2_async.main] worker{worker_id} 初始化完成，分配公司数: {len(company_chunk)}")
 
             worker_tasks = [
-                process_company_batch_async(worker_page, company_chunk, worker_id)
+                process_company_batch_async(worker_page, company_chunk, worker_id, config=config)
                 for worker_id, worker_page, company_chunk in worker_plans
             ]
             worker_outputs = await asyncio.gather(*worker_tasks, return_exceptions=True)
@@ -343,42 +342,19 @@ async def process_risk_2_async(
             logger.info(f"[risk_2_async.main] 所有公司处理完成，成功: {len(results)}, 失败: {len(failed_companies)}")
         except Exception as exc:
             logger.error(f"[risk_2_async.main] 处理过程中发生异常: {exc}")
-            processed_companies = {item.get('company_name') for item in results if isinstance(item, dict)}
+            processed_companies = {item.get("company_name") for item in results if isinstance(item, dict)}
             for company in companies:
                 if company not in processed_companies and company not in failed_companies:
                     failed_companies.append(company)
         finally:
             if context is not None:
-                await run_step_async(
+                close_result = await run_step_async(
                     context.close,
                     step_name="关闭异步浏览器上下文",
                     critical=False,
                     retries=0,
                 )
+                if close_result.error is not None and "has been closed" not in str(close_result.error):
+                    logger.warning(f"[risk_2_async.main] 关闭上下文时出现异常: {close_result.error}")
 
-    _save_results(results, failed_companies, worker_count)
     return results, failed_companies
-
-
-async def amain() -> None:
-    companies = load_companies_from_file()
-    if not companies:
-        logger.error("[risk_2_async.main] 未加载到公司列表，中止测试")
-        return
-
-    results, failed = await process_risk_2_async(
-        companies=companies,
-        worker_count=DEVELOPER_WORKER_COUNT,
-        browser_executable_path=EDGE_EXECUTABLE_PATH,
-        user_data_dir=EDGE_USER_DATA_DIR,
-        headless=False,
-    )
-    logger.info(f"[risk_2_async.main] 测试完成，成功: {len(results)}, 失败: {len(failed)}")
-
-
-def main() -> None:
-    asyncio.run(amain())
-
-
-if __name__ == "__main__":
-    main()

@@ -6,22 +6,22 @@ from loguru import logger
 from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TYC_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from tyc.modules.batch_company_query import query_companies_sequentially
-from tyc.modules.browser_context import launch_tyc_browser_context, save_cookies
+from tyc.modules.common.browser_context import launch_tyc_browser_context, save_cookies
+from tyc.modules.common.go_to_home import go_to_home_page
+from tyc.modules.common.login_state import wait_until_logged_in
+from tyc.modules.common.run_step import StepResult, run_step
 from tyc.modules.business_risk.business_risk_main import process_business_risk
 from tyc.modules.company_risk.collector import collect_company_risk
-from tyc.modules.enter_company_detail_page import enter_company_detail_page
-from tyc.modules.go_to_home import go_to_home_page
-from tyc.modules.login_state import wait_until_logged_in
-from tyc.modules.run_step import StepResult, run_step
+from tyc.modules.company_query.batch_company_query import query_companies_sequentially
+from tyc.modules.company_query.enter_company_detail_page import enter_company_detail_page
 
 
-BASE_DIR = Path(__file__).resolve().parent
-OUTPUT_FILE = BASE_DIR / "company_text.json"
+OUTPUT_FILE = TYC_ROOT / "data" / "output" / "tyc_main_results.json"
 TYC_HOME_URL = "https://www.tianyancha.com/"
 
 EDGE_EXECUTABLE_PATH = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")

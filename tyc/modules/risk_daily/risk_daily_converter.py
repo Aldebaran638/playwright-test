@@ -72,7 +72,7 @@ RISK_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "date_fields_priority": ["裁判日期", "发布日期"],
     },
     "法院公告": {
-        "name_field": ["title", "公告类型", "案由"],
+        "name_field": ["title", "公告类型", "案由","被告","原告"],
         "date_fields_priority": ["刊登时间"],
     },
     "限制消费令": {
@@ -96,11 +96,11 @@ RISK_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "date_fields_priority": [""],
     },
     "股权冻结": {
-        "name_field": ["title"],
+        "name_field": ["title","被执行人持有股权、其他投资权益数额","冻结开始至结束日期"],
         "date_fields_priority": [""],
     },
     "送达公告": {
-        "name_field": ["title"],
+        "name_field": ["title","案由"],
         "date_fields_priority": [""],
     },
     "立案信息": {
@@ -108,7 +108,7 @@ RISK_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "date_fields_priority": [""],
     },
     "破产案件": {
-        "name_field": ["title"],
+        "name_field": ["title","公开日期"],
         "date_fields_priority": [""],
     },
     "司法拍卖": {
@@ -136,7 +136,7 @@ RISK_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "date_fields_priority": [""],
     },
     "注销备案": {
-        "name_field": ["title"],
+        "name_field": ["注销原因","title"],
         "date_fields_priority": [""],
     },
     "简易注销": {
@@ -160,8 +160,8 @@ RISK_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "date_fields_priority": ["处罚日期"],
     },
     "环保处罚": {
-        "name_field": ["title"],
-        "date_fields_priority": [""],
+        "name_field": ["title","处罚事由"],
+        "date_fields_priority": ["处罚日期"],
     },
     "税收违法": {
         "name_field": ["title"],
@@ -180,8 +180,8 @@ RISK_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "date_fields_priority": [""],
     },
     "经营异常": {
-        "name_field": ["列入经营异常名录原因", "移出经营异常名录原因", "title"],
-        "date_fields_priority": [""],
+        "name_field": ["列入原因", "作出决定机关","列入日期","title"],
+        "date_fields_priority": ["列入日期"],
     },
     "政府约谈": {
         "name_field": ["title"],
@@ -196,7 +196,7 @@ RISK_TYPE_CONFIG: dict[str, dict[str, Any]] = {
         "date_fields_priority": [""],
     },
     "股权出质": {
-        "name_field": ["出质人", "title"],
+        "name_field": ["出质人", "出质股权数额", "title"],
         "date_fields_priority": [""],
     },
     "股权质押": {
@@ -239,18 +239,16 @@ class ConversionStats:
 
 def convert_risk_results_file(
     input_file: str | Path,
-    output_file: str | Path | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
+    output_file: str | Path,
+    start_date: str | None,
+    end_date: str | None,
 ) -> list[dict[str, str]]:
     input_path = Path(input_file)
     if not input_path.exists():
         logger.error(f"[risk_daily_converter] 输入文件不存在: {input_path}")
         return []
 
-    output_path = Path(output_file) if output_file is not None else input_path.with_name(
-        f"{input_path.stem}_daily_summary.json"
-    )
+    output_path = Path(output_file)
 
     try:
         with open(input_path, "r", encoding="utf-8") as f:
@@ -273,8 +271,8 @@ def convert_risk_results_file(
 
 def convert_risk_results_data(
     data: dict[str, Any],
-    start_date: str | None = None,
-    end_date: str | None = None,
+    start_date: str | None,
+    end_date: str | None,
 ) -> list[dict[str, str]]:
     successful_results = data.get("successful_results", [])
     if not isinstance(successful_results, list):

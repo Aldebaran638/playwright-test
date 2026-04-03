@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from loguru import logger
 from playwright.sync_api import Page
 
-from tyc.modules.guards.login_modal import is_login_modal_page
-from tyc.modules.guards.verification_page import is_verification_page
+from tyc.modules.common.guards.login_modal import is_login_modal_page
+from tyc.modules.common.guards.verification_page import is_verification_page
 
 
 NORMAL_PAGE = "normal_page"

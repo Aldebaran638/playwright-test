@@ -1,6 +1,12 @@
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TYC_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from loguru import logger
 from playwright.sync_api import Page
@@ -9,9 +15,9 @@ from tyc.modules.business_risk.date_range_filter import extract_sections_by_date
 from tyc.modules.business_risk.navigator import click_business_risk_tab
 from tyc.modules.business_risk.lawsuit_navigator import click_lawsuit_tab
 from tyc.modules.business_risk.lawsuit_extractor import extract_lawsuit_sections_by_date
-from tyc.modules.navigation.enter_company_detail_page import enter_company_detail_page
-from tyc.modules.navigation.go_to_home import go_to_home_page
+from tyc.modules.common.go_to_home import go_to_home_page
 from tyc.modules.common.run_step import StepResult, run_step
+from tyc.modules.company_query.enter_company_detail_page import enter_company_detail_page
 
 
 DEFAULT_DATE_START = "2016-01-01"
@@ -19,7 +25,7 @@ DEFAULT_DATE_END = "2028-01-01"
 DEFAULT_MAX_ROWS = 20
 
 # 定义输出文件路径
-OUTPUT_FILE = Path(__file__).resolve().parent / "company_text.json"
+OUTPUT_FILE = TYC_ROOT / "data" / "output" / "business_risk_results.json"
 
 
 def _extract_error_message(result: StepResult[Any]) -> str:

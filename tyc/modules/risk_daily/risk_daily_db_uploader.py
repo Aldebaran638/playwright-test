@@ -1,35 +1,29 @@
 from __future__ import annotations
 
 import json
-import os
-import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pymysql
-from dotenv import load_dotenv
 from loguru import logger
 from pymysql import Connection, cursors
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+@dataclass(slots=True)
+class RiskDailyDbConfig:
+    host: str
+    port: int
+    user: str
+    password: str
+    database: str
+    table: str
 
 
-load_dotenv(PROJECT_ROOT / ".env")
-
-
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = int(os.getenv("DB_PORT", "3306"))
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME", "winkeyai")
-DB_TABLE = os.getenv("DB_TABLE", "risk_info")
-DB_TABLE_BACKUP = f"{DB_TABLE}_backup"
-
-
-def upload_risk_daily_summary_to_db(input_file: str | Path) -> bool:
+def upload_risk_daily_summary_to_db(
+    input_file: str | Path,
+    db_config: RiskDailyDbConfig,
+) -> bool:
     input_path = Path(input_file)
 
     if not input_path.exists():
@@ -48,7 +42,7 @@ def upload_risk_daily_summary_to_db(input_file: str | Path) -> bool:
             return False
 
         logger.info(f"[risk_daily_db_uploader] 提取到 {len(records)} 条按日聚合记录")
-        success = _upload_records_to_db(records)
+        success = _upload_records_to_db(records, db_config)
 
         if success:
             logger.info(f"[risk_daily_db_uploader] 成功上传 {len(records)} 条记录到数据库")
@@ -111,18 +105,20 @@ def _is_valid_date(value: str) -> bool:
     return bool(value) and len(value) == 10 and value[4] == "-" and value[7] == "-"
 
 
-def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
+def _upload_records_to_db(records: list[dict[str, str]], db_config: RiskDailyDbConfig) -> bool:
     connection: Connection | None = None
 
     try:
-        logger.info(f"[risk_daily_db_uploader] 连接数据库: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+        logger.info(
+            f"[risk_daily_db_uploader] 连接数据库: {db_config.host}:{db_config.port}/{db_config.database}"
+        )
 
         connection = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME,
+            host=db_config.host,
+            port=db_config.port,
+            user=db_config.user,
+            password=db_config.password,
+            database=db_config.database,
             charset="utf8mb4",
             cursorclass=cursors.DictCursor,
             autocommit=False,
@@ -131,15 +127,14 @@ def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
         logger.info("[risk_daily_db_uploader] 数据库连接成功")
 
         with connection.cursor() as cursor:
-            # 如果主表不存在则创建；如果存在，则直接在其上使用事务插入（不做备份/重命名）
-            if not _table_exists(cursor, DB_TABLE):
-                logger.info(f"[risk_daily_db_uploader] 主表不存在，创建新表: {DB_TABLE}")
-                cursor.execute(build_create_table_sql(DB_TABLE))
+            if not _table_exists(cursor, db_config.table):
+                logger.info(f"[risk_daily_db_uploader] 主表不存在，创建新表: {db_config.table}")
+                cursor.execute(build_create_table_sql(db_config.table))
             else:
-                logger.info(f"[risk_daily_db_uploader] 主表已存在，将使用事务更新: {DB_TABLE}")
+                logger.info(f"[risk_daily_db_uploader] 主表已存在，将使用单事务整表覆盖: {db_config.table}")
 
             insert_sql = f"""
-                INSERT INTO `{DB_TABLE}`
+                INSERT INTO `{db_config.table}`
                 (
                     company_name,
                     risk_date,
@@ -149,12 +144,12 @@ def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
                     business_risk_names
                 )
                 VALUES (%s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    legal_litigation_types = VALUES(legal_litigation_types),
-                    legal_litigation_names = VALUES(legal_litigation_names),
-                    business_risk_types = VALUES(business_risk_types),
-                    business_risk_names = VALUES(business_risk_names)
             """
+
+            logger.info(
+                f"[risk_daily_db_uploader] 开始单事务覆盖表数据: {db_config.table}，目标记录数: {len(records)}"
+            )
+            cursor.execute(f"DELETE FROM `{db_config.table}`")
 
             inserted_count = 0
             for record in records:
@@ -178,7 +173,7 @@ def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
 
             connection.commit()
             logger.info(
-                f"[risk_daily_db_uploader] 事务提交成功，共插入 {inserted_count} 条记录"
+                f"[risk_daily_db_uploader] 事务提交成功，已整表覆盖并写入 {inserted_count} 条记录"
             )
             return True
 
@@ -221,16 +216,18 @@ def build_create_table_sql(table_name: str) -> str:
     """
 
 
-def test_db_connection() -> bool:
+def test_db_connection(db_config: RiskDailyDbConfig) -> bool:
     try:
-        logger.info(f"[risk_daily_db_uploader] 测试数据库连接: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+        logger.info(
+            f"[risk_daily_db_uploader] 测试数据库连接: {db_config.host}:{db_config.port}/{db_config.database}"
+        )
 
         connection = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME,
+            host=db_config.host,
+            port=db_config.port,
+            user=db_config.user,
+            password=db_config.password,
+            database=db_config.database,
             charset="utf8mb4",
             cursorclass=cursors.DictCursor,
         )
@@ -253,22 +250,22 @@ def test_db_connection() -> bool:
         return False
 
 
-def get_db_config() -> dict[str, Any]:
+def mask_db_config(db_config: RiskDailyDbConfig) -> dict[str, Any]:
     return {
-        "host": DB_HOST,
-        "port": DB_PORT,
-        "user": DB_USER,
+        "host": db_config.host,
+        "port": db_config.port,
+        "user": db_config.user,
         "password": "******",
-        "database": DB_NAME,
-        "table": DB_TABLE,
-        "backup_table": DB_TABLE_BACKUP,
+        "database": db_config.database,
+        "table": db_config.table,
     }
 
 
 __all__ = [
+    "RiskDailyDbConfig",
     "build_create_table_sql",
     "extract_summary_records_from_data",
-    "get_db_config",
+    "mask_db_config",
     "test_db_connection",
     "upload_risk_daily_summary_to_db",
 ]

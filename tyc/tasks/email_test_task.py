@@ -1,5 +1,5 @@
 from loguru import logger
-from tyc.emailSend import send_email
+from tyc.modules.email.emailSend import send_email
 
 
 def test_email_send():

@@ -4,9 +4,9 @@ from loguru import logger
 from playwright.sync_api import Page
 
 from tyc.modules.company_metadata import extract_company_metadata
-from tyc.modules.enter_company_detail_page import enter_company_detail_page
-from tyc.modules.go_to_home import go_to_home_page
-from tyc.modules.run_step import StepResult, run_step
+from tyc.modules.common.go_to_home import go_to_home_page
+from tyc.modules.common.run_step import StepResult, run_step
+from tyc.modules.company_query.enter_company_detail_page import enter_company_detail_page
 
 
 TYC_HOME_URL = "https://www.tianyancha.com/"
