@@ -10,6 +10,8 @@ from playwright.async_api import Page, TimeoutError
 
 
 T = TypeVar("T")
+STEP_DELAY_MIN_SECONDS = 0.3
+STEP_DELAY_MAX_SECONDS = 0.6
 
 
 @dataclass(slots=True)
@@ -44,7 +46,7 @@ async def run_step_async(
         if attempt > 0:
             logger.info(f'[run_step_async] 步骤"{name}" 第{attempt}次重试...')
 
-        await asyncio.sleep(random.uniform(0.3, 0.6))
+        await asyncio.sleep(random.uniform(STEP_DELAY_MIN_SECONDS, STEP_DELAY_MAX_SECONDS))
 
         try:
             value = await fn(*args, **kwargs)
