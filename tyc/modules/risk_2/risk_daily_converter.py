@@ -530,7 +530,7 @@ def iterate_text_candidates(value: Any) -> list[str]:
 
 
 def join_record_values(values: list[str]) -> str:
-    return "\n".join(values) if values else ""
+    return ";".join(values) if values else ""
 
 
 def _log_conversion_summary(stats: ConversionStats, unknown_type_counter: Counter[str]) -> None:
