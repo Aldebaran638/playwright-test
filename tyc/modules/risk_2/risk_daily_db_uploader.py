@@ -24,8 +24,8 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME", "risk_db")
-DB_TABLE = os.getenv("DB_DAILY_SUMMARY_TABLE", "risk_daily_summary")
+DB_NAME = os.getenv("DB_NAME", "winkeyai")
+DB_TABLE = os.getenv("DB_TABLE", "risk_info")
 DB_TABLE_BACKUP = f"{DB_TABLE}_backup"
 
 
@@ -113,7 +113,6 @@ def _is_valid_date(value: str) -> bool:
 
 def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
     connection: Connection | None = None
-    had_existing_table = False
 
     try:
         logger.info(f"[risk_daily_db_uploader] 连接数据库: {DB_HOST}:{DB_PORT}/{DB_NAME}")
@@ -132,18 +131,12 @@ def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
         logger.info("[risk_daily_db_uploader] 数据库连接成功")
 
         with connection.cursor() as cursor:
-            logger.info(f"[risk_daily_db_uploader] 删除旧备份表: {DB_TABLE_BACKUP}")
-            cursor.execute(f"DROP TABLE IF EXISTS `{DB_TABLE_BACKUP}`")
-
-            had_existing_table = _table_exists(cursor, DB_TABLE)
-            if had_existing_table:
-                logger.info(f"[risk_daily_db_uploader] 备份主表: {DB_TABLE} → {DB_TABLE_BACKUP}")
-                cursor.execute(f"RENAME TABLE `{DB_TABLE}` TO `{DB_TABLE_BACKUP}`")
-                logger.info(f"[risk_daily_db_uploader] 创建新主表: {DB_TABLE}")
-                cursor.execute(f"CREATE TABLE `{DB_TABLE}` LIKE `{DB_TABLE_BACKUP}`")
-            else:
+            # 如果主表不存在则创建；如果存在，则直接在其上使用事务插入（不做备份/重命名）
+            if not _table_exists(cursor, DB_TABLE):
                 logger.info(f"[risk_daily_db_uploader] 主表不存在，创建新表: {DB_TABLE}")
                 cursor.execute(build_create_table_sql(DB_TABLE))
+            else:
+                logger.info(f"[risk_daily_db_uploader] 主表已存在，将使用事务更新: {DB_TABLE}")
 
             insert_sql = f"""
                 INSERT INTO `{DB_TABLE}`
@@ -189,15 +182,6 @@ def _upload_records_to_db(records: list[dict[str, str]]) -> bool:
 
         if connection:
             connection.rollback()
-
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute(f"DROP TABLE IF EXISTS `{DB_TABLE}`")
-                    if had_existing_table and _table_exists(cursor, DB_TABLE_BACKUP):
-                        cursor.execute(f"RENAME TABLE `{DB_TABLE_BACKUP}` TO `{DB_TABLE}`")
-                        logger.info("[risk_daily_db_uploader] 已还原主表")
-            except Exception as restore_error:
-                logger.error(f"[risk_daily_db_uploader] 表还原失败: {restore_error}")
 
         return False
 
