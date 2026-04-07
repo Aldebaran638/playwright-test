@@ -15,8 +15,10 @@ from workflow.modules.browser_context.browser_context_workflow import (
     BrowserContextProbeResult,
     BrowserContextUserInput,
     build_terminal_message,
+    get_default_browser_context_config_path,
     get_next_mode,
     infer_requested_mode,
+    load_browser_context_user_input_from_config,
     path_exists,
     resolve_browser_context_mode,
 )
@@ -52,6 +54,27 @@ class TestBrowserContextWorkflow(unittest.TestCase):
 
         self.assertEqual(normalized.browser_executable_path, "C:/Edge/msedge.exe")
         self.assertIsNone(normalized.user_data_dir)
+
+    def test_load_browser_context_user_input_from_config_reads_json(self) -> None:
+        # 验证配置文件加载会正确读取并清理空白路径。
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "browser_context_config.json"
+            config_path.write_text(
+                '{"browser_executable_path": " C:/Edge/msedge.exe ", "user_data_dir": " D:/browser_data "}',
+                encoding="utf-8",
+            )
+
+            result = load_browser_context_user_input_from_config(config_path)
+
+        self.assertEqual(result.browser_executable_path, "C:/Edge/msedge.exe")
+        self.assertEqual(result.user_data_dir, "D:/browser_data")
+
+    def test_default_config_path_points_to_workflow_data_other(self) -> None:
+        # 验证默认配置路径固定落在 workflow/data/other 目录。
+        self.assertEqual(
+            get_default_browser_context_config_path(),
+            PROJECT_ROOT / "workflow" / "data" / "other" / "browser_context_config.json",
+        )
 
     def test_infer_requested_mode_covers_all_four_cases(self) -> None:
         # 验证首选模式推断覆盖四种输入组合。

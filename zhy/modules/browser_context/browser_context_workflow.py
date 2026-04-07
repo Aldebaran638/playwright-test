@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal
@@ -26,19 +25,14 @@ class BrowserContextUserInput:
     browser_executable_path: str | None = None
     user_data_dir: str | None = None
 
+    # 统一清理空白输入，避免把空字符串误判成有效路径。
     def normalized(self) -> "BrowserContextUserInput":
-        # 统一清理空白输入，避免后续把空字符串误判成有效路径。
         browser_path = (self.browser_executable_path or "").strip() or None
         user_data_dir = (self.user_data_dir or "").strip() or None
         return BrowserContextUserInput(
             browser_executable_path=browser_path,
             user_data_dir=user_data_dir,
         )
-
-    def has_any_value(self) -> bool:
-        # 配置模式只在至少提供了一项有效路径时才算可用。
-        normalized = self.normalized()
-        return bool(normalized.browser_executable_path or normalized.user_data_dir)
 
 
 @dataclass(frozen=True)
@@ -60,38 +54,17 @@ class BrowserContextWorkflowResult:
     messages: list[str] = field(default_factory=list)
 
 
-def get_default_browser_context_config_path() -> Path:
-    # 配置文件统一放在 workflow 根目录下的 data/other 中，便于任务和模块共用。
-    return Path(__file__).resolve().parents[2] / "data" / "other" / "browser_context_config.json"
-
-
-def load_browser_context_user_input_from_config(
-    config_path: str | Path | None = None,
-) -> BrowserContextUserInput:
-    # 从 JSON 配置文件读取浏览器路径和用户数据目录。
-    resolved_path = Path(config_path) if config_path else get_default_browser_context_config_path()
-    if not resolved_path.exists():
-        logger.info("[core] browser context config not found: {}", resolved_path)
-        return BrowserContextUserInput()
-
-    try:
-        data = json.loads(resolved_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        logger.warning("[core] browser context config is invalid json: {} | {}", resolved_path, exc)
-        return BrowserContextUserInput()
-
-    user_input = BrowserContextUserInput(
-        browser_executable_path=data.get("browser_executable_path"),
-        user_data_dir=data.get("user_data_dir"),
-    ).normalized()
-    logger.info("[core] loaded browser context config from {}", resolved_path)
-    return user_input
-
-
+# 根据用户输入推断首选浏览器上下文模式。
+#
+# 参数：
+# - user_input: 用户提供的浏览器路径和用户数据目录。
+# 返回：
+# - 推断出的首选模式。
+# 逻辑：
+# - 同时提供两种路径时优先走持久化模式，否则按输入完整度逐级降档。
 def infer_requested_mode(user_input: BrowserContextUserInput) -> BrowserEnvMode:
-    # 根据用户提供的两类路径输入，推断首选浏览器上下文模式。
     normalized = user_input.normalized()
-    logger.debug("[core] infer requested mode from normalized input: {}", normalized)
+    logger.debug("[browser_context] 开始推断首选模式，normalized={}", normalized)
 
     if normalized.browser_executable_path and normalized.user_data_dir:
         return "full_persistent"
@@ -102,13 +75,21 @@ def infer_requested_mode(user_input: BrowserContextUserInput) -> BrowserEnvMode:
     return "default_browser_ephemeral"
 
 
+# 根据失败原因计算下一档降级模式。
+#
+# 参数：
+# - current_mode: 当前探测失败的模式。
+# - failure_reason: 当前模式失败原因。
+# 返回：
+# - 下一档要尝试的模式；如果没有下一档则返回 None。
+# 逻辑：
+# - 第一档会按失败原因决定保留浏览器路径还是保留用户数据目录。
 def get_next_mode(
     current_mode: BrowserEnvMode,
     failure_reason: FailureReason | None,
 ) -> BrowserEnvMode | None:
-    # 根据失败原因计算降级后的下一档模式。
     logger.debug(
-        "[core] calculate next mode: current_mode={} failure_reason={}",
+        "[browser_context] 计算降级目标，current_mode={} failure_reason={}",
         current_mode,
         failure_reason,
     )
@@ -125,41 +106,49 @@ def get_next_mode(
     return None
 
 
+# 为当前尝试模式生成统一终端提示文案。
 def build_terminal_message(mode: BrowserEnvMode) -> str:
-    # 为当前尝试模式生成统一的终端提示文案。
     if mode == "full_persistent":
-        return "Current attempt mode: custom browser + user data dir (persistent)"
+        return "当前尝试模式：指定浏览器 + 指定用户数据目录（持久化）"
     if mode == "custom_browser_ephemeral":
-        return "Current attempt mode: custom browser + temporary context"
+        return "当前尝试模式：指定浏览器 + 临时上下文"
     if mode == "default_browser_persistent":
-        return "Current attempt mode: default Chromium + user data dir (persistent)"
-    return "Current attempt mode: default Chromium + temporary context"
+        return "当前尝试模式：默认浏览器 + 指定用户数据目录（持久化）"
+    return "当前尝试模式：默认浏览器 + 临时上下文"
 
 
+# 串联浏览器上下文模式推断、探测和降级流程。
+#
+# 参数：
+# - user_input: 用户提供的浏览器上下文相关输入。
+# - probe: 实际执行探测的回调函数。
+# 返回：
+# - 结构化的浏览器上下文工作流结果。
+# 逻辑：
+# - 先推断首选模式，再逐档探测；若失败则按规则降级直到成功或全部失败。
 def resolve_browser_context_mode(
     user_input: BrowserContextUserInput,
     probe: Callable[[BrowserEnvMode, BrowserContextUserInput], BrowserContextProbeResult],
 ) -> BrowserContextWorkflowResult:
-    # 串联首选模式推断、兼容探测和降级流程，输出最终的结构化结果。
     normalized = user_input.normalized()
     requested_mode = infer_requested_mode(normalized)
-    logger.info("[core] requested mode resolved: {}", requested_mode)
+    logger.info("[browser_context] 首选模式已确定：{}", requested_mode)
     current_mode: BrowserEnvMode | None = requested_mode
     fallback_chain: list[BrowserEnvMode] = []
     messages: list[str] = []
 
     while current_mode is not None:
-        # 每次循环都尝试当前模式，并在失败时决定是否继续降级。
+        # 每次循环都尝试当前模式，失败时再决定是否继续降级。
         fallback_chain.append(current_mode)
         messages.append(build_terminal_message(current_mode))
 
         probe_result = probe(current_mode, normalized)
-        logger.debug("[core] probe result: {}", probe_result)
+        logger.debug("[browser_context] 收到探测结果：{}", probe_result)
         if probe_result.success:
             if current_mode == requested_mode:
-                messages.append(f"Compatibility probe passed. Final mode: {current_mode}")
+                messages.append(f"兼容性探测通过，最终模式：{current_mode}")
             else:
-                messages.append(f"Fallback probe passed. Final mode: {current_mode}")
+                messages.append(f"降级后的兼容性探测通过，最终模式：{current_mode}")
 
             return BrowserContextWorkflowResult(
                 requested_mode=requested_mode,
@@ -173,18 +162,18 @@ def resolve_browser_context_mode(
 
         failure_reason = probe_result.failure_reason or "startup_failed"
         detail = probe_result.detail or failure_reason
-        messages.append(f"Mode {current_mode} failed compatibility probe: {detail}")
-        logger.info("[core] mode {} failed: {}", current_mode, detail)
+        messages.append(f"模式 {current_mode} 探测失败：{detail}")
+        logger.info("[browser_context] 模式 {} 失败：{}", current_mode, detail)
 
         next_mode = get_next_mode(current_mode, failure_reason)
         if next_mode is not None:
-            messages.append(f"Downgrade to next mode: {next_mode}")
-            logger.info("[core] downgrade to {}", next_mode)
+            messages.append(f"开始降级到：{next_mode}")
+            logger.info("[browser_context] 准备降级到 {}", next_mode)
         current_mode = next_mode
 
-    # 如果所有模式都失败，返回统一的失败结果给上层处理。
-    messages.append("All browser context modes failed.")
-    logger.warning("[core] all browser context modes failed")
+    # 所有模式都失败时，返回统一失败结果给上层处理。
+    messages.append("所有浏览器上下文模式均探测失败。")
+    logger.warning("[browser_context] 所有浏览器上下文模式均探测失败")
     return BrowserContextWorkflowResult(
         requested_mode=requested_mode,
         resolved_mode=None,
@@ -196,11 +185,11 @@ def resolve_browser_context_mode(
     )
 
 
+# 判断给定路径是否真实存在。
 def path_exists(path_value: str | None) -> bool:
-    # 统一处理空路径和真实路径存在性判断。
     if not path_value:
-        logger.debug("[core] path_exists received empty path")
+        logger.debug("[browser_context] path_exists 收到空路径")
         return False
     exists = Path(path_value).exists()
-    logger.debug("[core] path_exists path={} exists={}", path_value, exists)
+    logger.debug("[browser_context] path={} exists={}", path_value, exists)
     return exists
