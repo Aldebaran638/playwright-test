@@ -6,12 +6,12 @@ from pathlib import Path
 from loguru import logger
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from workflow.modules.browser_context_probe import probe_browser_context_mode
-from workflow.modules.browser_context_workflow import BrowserContextUserInput
+from workflow.modules.browser_context.browser_context_probe import probe_browser_context_mode
+from workflow.modules.browser_context.browser_context_workflow import BrowserContextUserInput
 
 
 logger.remove()
@@ -20,7 +20,7 @@ logger.add(sys.stdout, format="{time:HH:mm:ss} | {level} | {message}")
 
 class TestBrowserContextProbe(unittest.TestCase):
     def test_full_persistent_returns_browser_unavailable_when_only_browser_is_missing(self) -> None:
-        logger.info("[测试1] 验证第一档模式下仅浏览器缺失会返回 browser_unavailable")
+        # 验证第一档模式下仅浏览器缺失时，会返回 browser_unavailable。
         with tempfile.TemporaryDirectory() as tmp_dir:
             result = probe_browser_context_mode(
                 "full_persistent",
@@ -34,7 +34,7 @@ class TestBrowserContextProbe(unittest.TestCase):
         self.assertEqual(result.failure_reason, "browser_unavailable")
 
     def test_full_persistent_returns_user_data_unavailable_when_only_user_data_is_missing(self) -> None:
-        logger.info("[测试2] 验证第一档模式下仅数据目录缺失会返回 user_data_unavailable")
+        # 验证第一档模式下仅用户数据目录缺失时，会返回 user_data_unavailable。
         with tempfile.NamedTemporaryFile() as tmp_file:
             result = probe_browser_context_mode(
                 "full_persistent",
@@ -48,7 +48,7 @@ class TestBrowserContextProbe(unittest.TestCase):
         self.assertEqual(result.failure_reason, "user_data_unavailable")
 
     def test_custom_browser_ephemeral_succeeds_when_browser_exists(self) -> None:
-        logger.info("[测试3] 验证第二档模式在浏览器路径存在时直接成功")
+        # 验证第二档模式在浏览器路径存在时直接成功。
         with tempfile.NamedTemporaryFile() as tmp_file:
             result = probe_browser_context_mode(
                 "custom_browser_ephemeral",
@@ -59,7 +59,7 @@ class TestBrowserContextProbe(unittest.TestCase):
         self.assertIsNone(result.failure_reason)
 
     def test_default_browser_persistent_returns_user_data_unavailable_when_data_is_missing(self) -> None:
-        logger.info("[测试4] 验证第三档模式在数据目录缺失时会继续降级")
+        # 验证第三档模式在用户数据目录缺失时继续降级。
         result = probe_browser_context_mode(
             "default_browser_persistent",
             BrowserContextUserInput(user_data_dir="Z:/missing_user_data"),
@@ -69,7 +69,7 @@ class TestBrowserContextProbe(unittest.TestCase):
         self.assertEqual(result.failure_reason, "user_data_unavailable")
 
     def test_default_browser_ephemeral_always_succeeds(self) -> None:
-        logger.info("[测试5] 验证第四档模式作为最终兜底时默认成功")
+        # 验证第四档兜底模式默认成功。
         result = probe_browser_context_mode(
             "default_browser_ephemeral",
             BrowserContextUserInput(),
