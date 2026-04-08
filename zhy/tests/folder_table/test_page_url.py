@@ -8,7 +8,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from zhy.modules.folder_table.page_url import build_folder_page_url, parse_folder_target
+from zhy.modules.folder_table.page_url import (
+    build_folder_page_url,
+    extract_folder_page_number,
+    parse_folder_target,
+)
 
 
 class TestPageUrl(unittest.TestCase):
@@ -26,6 +30,16 @@ class TestPageUrl(unittest.TestCase):
         self.assertIn("page=3", new_url)
         self.assertIn("spaceId=space-1", new_url)
         self.assertIn("folderId=folder-2", new_url)
+
+    def test_extract_folder_page_number_reads_page_query_parameter(self) -> None:
+        url = "https://workspace.zhihuiya.com/detail/patent/table?spaceId=space-1&folderId=folder-2&page=12"
+
+        self.assertEqual(extract_folder_page_number(url), 12)
+
+    def test_extract_folder_page_number_returns_none_for_missing_page(self) -> None:
+        url = "https://workspace.zhihuiya.com/detail/patent/table?spaceId=space-1&folderId=folder-2"
+
+        self.assertIsNone(extract_folder_page_number(url))
 
 
 if __name__ == "__main__":

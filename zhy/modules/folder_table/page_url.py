@@ -29,3 +29,17 @@ def build_folder_page_url(base_url: str, page_number: int) -> str:
     query["page"] = [str(page_number)]
     rebuilt_query = urlencode(query, doseq=True)
     return urlunparse(parsed._replace(query=rebuilt_query))
+
+
+def extract_folder_page_number(url: str) -> int | None:
+    # 从当前页面 URL 中读取 page 参数，用来判断是否发生了越界重定向。
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    raw_page_number = (query.get("page") or [""])[0].strip()
+    if not raw_page_number:
+        return None
+
+    try:
+        return int(raw_page_number)
+    except ValueError:
+        return None

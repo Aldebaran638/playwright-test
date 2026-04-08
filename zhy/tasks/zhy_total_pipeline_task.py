@@ -28,26 +28,38 @@ from zhy.modules.folder_table import FolderTableConfig, collect_folder_table, pa
 from zhy.tasks.folder_table_collect_task import (
     DEFAULT_COOKIE_PATH,
     DEFAULT_FOLDER_URLS,
+    DEFAULT_GOTO_TIMEOUT_MS,
+    DEFAULT_LOADING_OVERLAY_SELECTOR,
+    DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
+    DEFAULT_LOGIN_TIMEOUT_SECONDS,
     DEFAULT_OUTPUT_ROOT_DIR,
     DEFAULT_SELECTORS,
+    DEFAULT_SUCCESS_CONTENT_SELECTOR,
+    DEFAULT_SUCCESS_HEADER_SELECTOR,
+    DEFAULT_SUCCESS_LOGGED_IN_SELECTOR,
+    DEFAULT_SUCCESS_URL,
+    DEFAULT_TARGET_HOME_URL,
     initialize_site,
     load_cookies_if_present,
     save_cookies,
 )
 
 
-DEFAULT_BROWSER_EXECUTABLE_PATH: str | None = None
-DEFAULT_USER_DATA_DIR: str | None = None
-DEFAULT_FOLDER_CONCURRENCY = 3
-DEFAULT_CONCURRENCY = 3
+DEFAULT_BROWSER_EXECUTABLE_PATH: str | None = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+DEFAULT_USER_DATA_DIR: str | None = r"C:\Users\winkey\AppData\Local\Microsoft\Edge\User Data2"
+DEFAULT_FOLDER_CONCURRENCY = 1
+DEFAULT_CONCURRENCY = 1
 DEFAULT_START_PAGE = 1
 DEFAULT_PAGE_SIZE = 100
 DEFAULT_ZOOM_RATIO = 0.8
 DEFAULT_PAGE_TIMEOUT_MS = 30000
-DEFAULT_TABLE_READY_TIMEOUT_MS = 15000
+DEFAULT_TABLE_READY_TIMEOUT_MS = 120000
 DEFAULT_SCROLL_STEP_PIXELS = 420
 DEFAULT_SCROLL_PAUSE_SECONDS = 0.5
 DEFAULT_MAX_STABLE_SCROLL_ROUNDS = 3
+DEFAULT_EMPTY_PAGE_WAIT_SECONDS = 6.0
+DEFAULT_RETRY_COUNT = 3
+DEFAULT_RETRY_WAIT_SECONDS = 2.0
 DEFAULT_HEADLESS = False
 
 
@@ -172,6 +184,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MAX_STABLE_SCROLL_ROUNDS,
     )
+    parser.add_argument("--retry-count", type=int, default=DEFAULT_RETRY_COUNT)
+    parser.add_argument("--retry-wait-seconds", type=float, default=DEFAULT_RETRY_WAIT_SECONDS)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT_DIR)
     parser.add_argument("--cookie-path", type=Path, default=DEFAULT_COOKIE_PATH)
     parser.add_argument("--headless", action="store_true", default=DEFAULT_HEADLESS)
@@ -207,6 +221,9 @@ async def run_pipeline(args: argparse.Namespace) -> None:
         scroll_step_pixels=args.scroll_step_pixels,
         scroll_pause_seconds=args.scroll_pause_seconds,
         max_stable_scroll_rounds=args.max_stable_scroll_rounds,
+        empty_page_wait_seconds=DEFAULT_EMPTY_PAGE_WAIT_SECONDS,
+        retry_count=args.retry_count,
+        retry_wait_seconds=args.retry_wait_seconds,
     )
 
     default_browser_context_input = build_default_browser_context_user_input()
@@ -225,7 +242,18 @@ async def run_pipeline(args: argparse.Namespace) -> None:
 
         try:
             await load_cookies_if_present(managed.context, args.cookie_path)
-            login_page = await initialize_site(managed.context)
+            login_page = await initialize_site(
+                context=managed.context,
+                target_home_url=DEFAULT_TARGET_HOME_URL,
+                success_url=DEFAULT_SUCCESS_URL,
+                success_header_selector=DEFAULT_SUCCESS_HEADER_SELECTOR,
+                success_logged_in_selector=DEFAULT_SUCCESS_LOGGED_IN_SELECTOR,
+                success_content_selector=DEFAULT_SUCCESS_CONTENT_SELECTOR,
+                loading_overlay_selector=DEFAULT_LOADING_OVERLAY_SELECTOR,
+                goto_timeout_ms=DEFAULT_GOTO_TIMEOUT_MS,
+                timeout_seconds=DEFAULT_LOGIN_TIMEOUT_SECONDS,
+                poll_interval_seconds=DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
+            )
             await save_cookies(managed.context, args.cookie_path)
             logger.info("[zhy_total_pipeline] site initialization finished at {}", login_page.url)
 

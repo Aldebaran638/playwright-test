@@ -1,5 +1,10 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
+from typing import Literal
+
+
+PageCollectStatus = Literal["success", "empty", "error"]
 
 
 @dataclass(frozen=True)
@@ -28,12 +33,15 @@ class TableRowRecord:
 
 @dataclass(frozen=True)
 class PageCollectResult:
-    # 汇总单页抓取结果，供上层流程决定是否继续派发新页。
+    # 汇总单页抓取结果，显式区分成功、空页和异常。
     folder_id: str
     page_number: int
+    status: PageCollectStatus
     schema: TableSchema | None
     rows: list[TableRowRecord]
     is_empty: bool
+    error_message: str | None = None
+    debug_payload: dict[str, Any] | None = None
 
 
 @dataclass
@@ -51,15 +59,17 @@ class FolderCollectResult:
 
 @dataclass(frozen=True)
 class FolderTableConfig:
-    # 把抓取阶段的可调参数集中放在配置对象里，避免模块内硬编码业务参数。
+    # 抓取阶段的所有业务参数都要求由 task 显式传入，模块层不保留默认值。
     output_root_dir: Path
-    concurrency: int = 3
-    start_page: int = 1
-    expected_page_size: int = 100
-    zoom_ratio: float = 0.8
-    page_timeout_ms: int = 30000
-    table_ready_timeout_ms: int = 15000
-    scroll_step_pixels: int = 420
-    scroll_pause_seconds: float = 0.5
-    max_stable_scroll_rounds: int = 3
-    empty_page_wait_seconds: float = 3.0
+    concurrency: int
+    start_page: int
+    expected_page_size: int
+    zoom_ratio: float
+    page_timeout_ms: int
+    table_ready_timeout_ms: int
+    scroll_step_pixels: int
+    scroll_pause_seconds: float
+    max_stable_scroll_rounds: int
+    empty_page_wait_seconds: float
+    retry_count: int
+    retry_wait_seconds: float

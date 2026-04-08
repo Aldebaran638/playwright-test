@@ -15,22 +15,41 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 from zhy.modules.folder_table import FolderTableConfig, collect_folder_table, parse_folder_target
-from zhy.modules.site_init.initialize_site import (
-    DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
-    DEFAULT_LOGIN_TIMEOUT_SECONDS,
-    LOADING_OVERLAY_SELECTOR,
-    SUCCESS_CONTENT_SELECTOR,
-    SUCCESS_HEADER_SELECTOR,
-    SUCCESS_LOGGED_IN_SELECTOR,
-    TARGET_HOME_URL,
-)
 
+
+DEFAULT_TARGET_HOME_URL = "https://analytics.zhihuiya.com/request_demo?project=search#/template"
+DEFAULT_SUCCESS_URL = DEFAULT_TARGET_HOME_URL
+DEFAULT_SUCCESS_HEADER_SELECTOR = "#header-wrapper"
+DEFAULT_SUCCESS_LOGGED_IN_SELECTOR = ".patsnap-biz-user_center--logged .patsnap-biz-avatar"
+DEFAULT_SUCCESS_CONTENT_SELECTOR = "#demo_user-info"
+DEFAULT_LOADING_OVERLAY_SELECTOR = "#page-pre-loading-bg"
+DEFAULT_GOTO_TIMEOUT_MS = 30000
+DEFAULT_LOGIN_TIMEOUT_SECONDS = 600.0
+DEFAULT_LOGIN_POLL_INTERVAL_SECONDS = 3.0
 
 DEFAULT_OUTPUT_ROOT_DIR = PROJECT_ROOT / "zhy" / "data" / "output" / "folder_tables"
 DEFAULT_COOKIE_PATH = PROJECT_ROOT / "zhy" / "data" / "other" / "site_init_cookies.json"
 DEFAULT_FOLDER_URLS = [
-    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=306f9f76aa5940a0acfc4b8a4dad8a18&page=1"
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=306f9f76aa5940a0acfc4b8a4dad8a18&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=7e56feab503f4c0fa5103f7e126a8aa0&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=7e80a0c91c024d378441f19a3abc5595&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=0b77a83bc2554d52b66e6350cb8729f3&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=55d9e6fa7c5b4cd6998e2209b386c8c6&page=1",
+
 ]
+DEFAULT_CONCURRENCY = 3
+DEFAULT_START_PAGE = 1
+DEFAULT_PAGE_SIZE = 100
+DEFAULT_ZOOM_RATIO = 0.8
+DEFAULT_PAGE_TIMEOUT_MS = 30000
+DEFAULT_TABLE_READY_TIMEOUT_MS = 120000
+DEFAULT_SCROLL_STEP_PIXELS = 420
+DEFAULT_SCROLL_PAUSE_SECONDS = 0.5
+DEFAULT_MAX_STABLE_SCROLL_ROUNDS = 3
+DEFAULT_EMPTY_PAGE_WAIT_SECONDS = 3.0
+DEFAULT_RETRY_COUNT = 3
+DEFAULT_RETRY_WAIT_SECONDS = 2.0
+
 DEFAULT_SELECTORS = {
     "table_container": ".excel-table-container",
     "table_scroll_container": ".excel-table-container .ht_master .wtHolder",
@@ -45,15 +64,17 @@ DEFAULT_SELECTORS = {
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Collect ZHY folder table data.")
     parser.add_argument("--folder-url", action="append", dest="folder_urls", default=[])
-    parser.add_argument("--concurrency", type=int, default=3)
-    parser.add_argument("--start-page", type=int, default=1)
-    parser.add_argument("--page-size", type=int, default=100)
-    parser.add_argument("--zoom-ratio", type=float, default=0.8)
-    parser.add_argument("--page-timeout-ms", type=int, default=30000)
-    parser.add_argument("--table-ready-timeout-ms", type=int, default=15000)
-    parser.add_argument("--scroll-step-pixels", type=int, default=420)
-    parser.add_argument("--scroll-pause-seconds", type=float, default=0.5)
-    parser.add_argument("--max-stable-scroll-rounds", type=int, default=3)
+    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
+    parser.add_argument("--start-page", type=int, default=DEFAULT_START_PAGE)
+    parser.add_argument("--page-size", type=int, default=DEFAULT_PAGE_SIZE)
+    parser.add_argument("--zoom-ratio", type=float, default=DEFAULT_ZOOM_RATIO)
+    parser.add_argument("--page-timeout-ms", type=int, default=DEFAULT_PAGE_TIMEOUT_MS)
+    parser.add_argument("--table-ready-timeout-ms", type=int, default=DEFAULT_TABLE_READY_TIMEOUT_MS)
+    parser.add_argument("--scroll-step-pixels", type=int, default=DEFAULT_SCROLL_STEP_PIXELS)
+    parser.add_argument("--scroll-pause-seconds", type=float, default=DEFAULT_SCROLL_PAUSE_SECONDS)
+    parser.add_argument("--max-stable-scroll-rounds", type=int, default=DEFAULT_MAX_STABLE_SCROLL_ROUNDS)
+    parser.add_argument("--retry-count", type=int, default=DEFAULT_RETRY_COUNT)
+    parser.add_argument("--retry-wait-seconds", type=float, default=DEFAULT_RETRY_WAIT_SECONDS)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT_DIR)
     parser.add_argument("--cookie-path", type=Path, default=DEFAULT_COOKIE_PATH)
     return parser
@@ -90,39 +111,64 @@ async def selector_is_visible(page: Page, selector: str) -> bool:
     return await locator.first.is_visible()
 
 
-async def has_reached_logged_in_state(page: Page) -> bool:
-    if page.url.strip() != TARGET_HOME_URL:
+async def has_reached_logged_in_state(
+    page: Page,
+    success_url: str,
+    success_header_selector: str,
+    success_logged_in_selector: str,
+    success_content_selector: str,
+    loading_overlay_selector: str,
+) -> bool:
+    if page.url.strip() != success_url:
         return False
-    if not await selector_exists(page, SUCCESS_HEADER_SELECTOR):
+    if not await selector_exists(page, success_header_selector):
         return False
-    if not await selector_exists(page, SUCCESS_LOGGED_IN_SELECTOR):
+    if not await selector_exists(page, success_logged_in_selector):
         return False
-    if not await selector_exists(page, SUCCESS_CONTENT_SELECTOR):
+    if not await selector_exists(page, success_content_selector):
         return False
-    if await selector_is_visible(page, LOADING_OVERLAY_SELECTOR):
+    if await selector_is_visible(page, loading_overlay_selector):
         return False
     return True
 
 
-async def initialize_site(context: BrowserContext) -> Page:
+async def initialize_site(
+    context: BrowserContext,
+    target_home_url: str,
+    success_url: str,
+    success_header_selector: str,
+    success_logged_in_selector: str,
+    success_content_selector: str,
+    loading_overlay_selector: str,
+    goto_timeout_ms: int,
+    timeout_seconds: float,
+    poll_interval_seconds: float,
+) -> Page:
     page = await context.new_page()
     try:
-        await page.goto(TARGET_HOME_URL, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(target_home_url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
     except Exception:
         logger.warning(
             "[folder_table_task] opening home page timed out, continue waiting for manual login"
         )
 
-    deadline = time.time() + DEFAULT_LOGIN_TIMEOUT_SECONDS
+    deadline = time.time() + timeout_seconds
     while time.time() < deadline:
-        if await has_reached_logged_in_state(page):
+        if await has_reached_logged_in_state(
+            page=page,
+            success_url=success_url,
+            success_header_selector=success_header_selector,
+            success_logged_in_selector=success_logged_in_selector,
+            success_content_selector=success_content_selector,
+            loading_overlay_selector=loading_overlay_selector,
+        ):
             logger.info("[folder_table_task] login success detected")
             return page
         logger.info(
             "[folder_table_task] login not ready yet, check again in {} seconds",
-            DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
+            poll_interval_seconds,
         )
-        await page.wait_for_timeout(DEFAULT_LOGIN_POLL_INTERVAL_SECONDS * 1000)
+        await page.wait_for_timeout(poll_interval_seconds * 1000)
 
     raise TimeoutError("waiting for manual login timed out")
 
@@ -140,6 +186,9 @@ async def run_task(args: argparse.Namespace) -> None:
         scroll_step_pixels=args.scroll_step_pixels,
         scroll_pause_seconds=args.scroll_pause_seconds,
         max_stable_scroll_rounds=args.max_stable_scroll_rounds,
+        empty_page_wait_seconds=DEFAULT_EMPTY_PAGE_WAIT_SECONDS,
+        retry_count=args.retry_count,
+        retry_wait_seconds=args.retry_wait_seconds,
     )
 
     async with async_playwright() as playwright:
@@ -148,7 +197,18 @@ async def run_task(args: argparse.Namespace) -> None:
 
         try:
             await load_cookies_if_present(context, args.cookie_path)
-            login_page = await initialize_site(context)
+            login_page = await initialize_site(
+                context=context,
+                target_home_url=DEFAULT_TARGET_HOME_URL,
+                success_url=DEFAULT_SUCCESS_URL,
+                success_header_selector=DEFAULT_SUCCESS_HEADER_SELECTOR,
+                success_logged_in_selector=DEFAULT_SUCCESS_LOGGED_IN_SELECTOR,
+                success_content_selector=DEFAULT_SUCCESS_CONTENT_SELECTOR,
+                loading_overlay_selector=DEFAULT_LOADING_OVERLAY_SELECTOR,
+                goto_timeout_ms=DEFAULT_GOTO_TIMEOUT_MS,
+                timeout_seconds=DEFAULT_LOGIN_TIMEOUT_SECONDS,
+                poll_interval_seconds=DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
+            )
             await save_cookies(context, args.cookie_path)
             logger.info("[folder_table_task] site initialization finished at {}", login_page.url)
 

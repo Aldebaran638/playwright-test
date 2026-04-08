@@ -31,9 +31,9 @@ async def ensure_page_size(
     if is_expected_page_size_text(selected_text, expected_page_size):
         return
 
-    await page.locator(trigger_selector).click()
+    await page.locator(trigger_selector).click(timeout=timeout_ms)
     option_selector = option_template.format(size=expected_page_size)
-    await page.locator(option_selector).click()
+    await page.locator(option_selector).click(timeout=timeout_ms)
 
     try:
         await page.wait_for_function(

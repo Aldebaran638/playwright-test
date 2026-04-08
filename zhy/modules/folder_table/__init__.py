@@ -7,7 +7,11 @@ from zhy.modules.folder_table.models import (
     TableSchema,
 )
 from zhy.modules.folder_table.folder_table_workflow import collect_folder_table, collect_single_page
-from zhy.modules.folder_table.page_url import build_folder_page_url, parse_folder_target
+from zhy.modules.folder_table.page_url import (
+    build_folder_page_url,
+    extract_folder_page_number,
+    parse_folder_target,
+)
 
 __all__ = [
     "FolderCollectResult",
@@ -19,5 +23,6 @@ __all__ = [
     "build_folder_page_url",
     "collect_folder_table",
     "collect_single_page",
+    "extract_folder_page_number",
     "parse_folder_target",
 ]

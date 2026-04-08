@@ -1,0 +1,18 @@
+{
+  "space_id": "ccb6031b05034c7ab2c4b120c2dc3155",
+  "folder_id": "306f9f76aa5940a0acfc4b8a4dad8a18",
+  "base_url": "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=306f9f76aa5940a0acfc4b8a4dad8a18&page=1",
+  "status": "running",
+  "total_pages_collected": 0,
+  "total_rows_collected": 0,
+  "empty_page_number": null,
+  "collected_page_numbers": [],
+  "failed_page_numbers": [
+    1,
+    2
+  ],
+  "failure_details": {
+    "1": "failed to extract table schema after buffer wait",
+    "2": "failed to extract table schema after buffer wait"
+  }
+}

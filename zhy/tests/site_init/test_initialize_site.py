@@ -7,17 +7,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from zhy.modules.site_init.initialize_site import (
-    DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
-    DEFAULT_LOGIN_TIMEOUT_SECONDS,
-    LOADING_OVERLAY_SELECTOR,
-    SUCCESS_CONTENT_SELECTOR,
-    SUCCESS_HEADER_SELECTOR,
-    SUCCESS_LOGGED_IN_SELECTOR,
-    TARGET_HOME_URL,
-    has_reached_logged_in_state,
-    normalize_url,
-)
+
+from zhy.modules.site_init.initialize_site import has_reached_logged_in_state, normalize_url
+
+
+TARGET_HOME_URL = "https://analytics.zhihuiya.com/request_demo?project=search#/template"
+SUCCESS_HEADER_SELECTOR = "#header-wrapper"
+SUCCESS_LOGGED_IN_SELECTOR = ".patsnap-biz-user_center--logged .patsnap-biz-avatar"
+SUCCESS_CONTENT_SELECTOR = "#demo_user-info"
+LOADING_OVERLAY_SELECTOR = "#page-pre-loading-bg"
+LOGIN_TIMEOUT_SECONDS = 600.0
+LOGIN_POLL_INTERVAL_SECONDS = 3.0
 
 
 class FakeLocator:
@@ -53,11 +53,9 @@ class FakePage:
 
 class TestInitializeSite(unittest.TestCase):
     def test_normalize_url_trims_whitespace(self) -> None:
-        # 验证 URL 标准化函数会去掉首尾空白字符。
         self.assertEqual(normalize_url(f"  {TARGET_HOME_URL}  "), TARGET_HOME_URL)
 
     def test_has_reached_logged_in_state_returns_true_when_all_signals_match(self) -> None:
-        # 验证只有目标地址、已登录头部和主体内容同时满足时，才判定为成功。
         page = FakePage(
             TARGET_HOME_URL,
             existing_selectors={
@@ -66,18 +64,34 @@ class TestInitializeSite(unittest.TestCase):
                 SUCCESS_CONTENT_SELECTOR,
             },
         )
-        self.assertTrue(has_reached_logged_in_state(page))
+        self.assertTrue(
+            has_reached_logged_in_state(
+                page=page,
+                success_url=TARGET_HOME_URL,
+                success_header_selector=SUCCESS_HEADER_SELECTOR,
+                success_logged_in_selector=SUCCESS_LOGGED_IN_SELECTOR,
+                success_content_selector=SUCCESS_CONTENT_SELECTOR,
+                loading_overlay_selector=LOADING_OVERLAY_SELECTOR,
+            )
+        )
 
     def test_has_reached_logged_in_state_returns_false_when_only_header_exists(self) -> None:
-        # 验证只有头部骨架存在时，不会误判为登录成功。
         page = FakePage(
             TARGET_HOME_URL,
             existing_selectors={SUCCESS_HEADER_SELECTOR},
         )
-        self.assertFalse(has_reached_logged_in_state(page))
+        self.assertFalse(
+            has_reached_logged_in_state(
+                page=page,
+                success_url=TARGET_HOME_URL,
+                success_header_selector=SUCCESS_HEADER_SELECTOR,
+                success_logged_in_selector=SUCCESS_LOGGED_IN_SELECTOR,
+                success_content_selector=SUCCESS_CONTENT_SELECTOR,
+                loading_overlay_selector=LOADING_OVERLAY_SELECTOR,
+            )
+        )
 
     def test_has_reached_logged_in_state_returns_false_when_loading_overlay_is_visible(self) -> None:
-        # 验证预加载层仍然可见时，不会过早判定成功。
         page = FakePage(
             TARGET_HOME_URL,
             existing_selectors={
@@ -88,10 +102,18 @@ class TestInitializeSite(unittest.TestCase):
             },
             visible_selectors={LOADING_OVERLAY_SELECTOR},
         )
-        self.assertFalse(has_reached_logged_in_state(page))
+        self.assertFalse(
+            has_reached_logged_in_state(
+                page=page,
+                success_url=TARGET_HOME_URL,
+                success_header_selector=SUCCESS_HEADER_SELECTOR,
+                success_logged_in_selector=SUCCESS_LOGGED_IN_SELECTOR,
+                success_content_selector=SUCCESS_CONTENT_SELECTOR,
+                loading_overlay_selector=LOADING_OVERLAY_SELECTOR,
+            )
+        )
 
     def test_has_reached_logged_in_state_returns_false_when_url_differs(self) -> None:
-        # 验证即使结构满足，只要 URL 不一致也不会误判。
         page = FakePage(
             "https://analytics.zhihuiya.com/login",
             existing_selectors={
@@ -100,12 +122,20 @@ class TestInitializeSite(unittest.TestCase):
                 SUCCESS_CONTENT_SELECTOR,
             },
         )
-        self.assertFalse(has_reached_logged_in_state(page))
+        self.assertFalse(
+            has_reached_logged_in_state(
+                page=page,
+                success_url=TARGET_HOME_URL,
+                success_header_selector=SUCCESS_HEADER_SELECTOR,
+                success_logged_in_selector=SUCCESS_LOGGED_IN_SELECTOR,
+                success_content_selector=SUCCESS_CONTENT_SELECTOR,
+                loading_overlay_selector=LOADING_OVERLAY_SELECTOR,
+            )
+        )
 
-    def test_default_timeout_and_poll_interval_are_expected(self) -> None:
-        # 验证人工登录流程使用的默认超时和轮询间隔符合需求。
-        self.assertEqual(DEFAULT_LOGIN_TIMEOUT_SECONDS, 600.0)
-        self.assertEqual(DEFAULT_LOGIN_POLL_INTERVAL_SECONDS, 3.0)
+    def test_login_wait_settings_are_defined_in_task_layer(self) -> None:
+        self.assertEqual(LOGIN_TIMEOUT_SECONDS, 600.0)
+        self.assertEqual(LOGIN_POLL_INTERVAL_SECONDS, 3.0)
 
 
 if __name__ == "__main__":
