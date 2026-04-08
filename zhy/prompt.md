@@ -19,7 +19,8 @@
 以上模块需要加到现有的流程zhy\tasks\folder_table_probe_task.py。可能需要一些新的模块？想加就加。
 
 然后建立一个全新的json文件，用来存储已经下载PDF的专利公开号。
-在专门的页面接口自动化下载专利PDF,每天允许下载400份.这个接口地址是https://analytics.zhihuiya.com/search/input/bulk,源码在mid4.html其中有一个输入框可以输入专利号，只需要用换行符分割专利公开号就行。点击查询（导出？）按钮以后会进入类似https://analytics.zhihuiya.com/export?_type=batch&sort=sdesc&sn=14238f59-1696-431f-beab-7b057c01def8&q=%5BBULK%5D14238f59-1696-431f-beab-7b057c01def8#/的地址,是具体的导出页面.点击导出按钮即可.页面源码在mid5.html
+在专门的页面接口自动化下载专利PDF,每天允许下载n份.这个接口地址是https://analytics.zhihuiya.com/search/input/bulk,源码在mid4.html其中有一个输入框可以输入专利号，只需要用换行符分割专利公开号就行。点击查询（导出？）按钮以后会进入类似https://analytics.zhihuiya.com/export?_type=batch&sort=sdesc&sn=14238f59-1696-431f-beab-7b057c01def8&q=%5BBULK%5D14238f59-1696-431f-beab-7b057c01def8#/的地址,是具体的导出页面.点击导出按钮即可.页面源码在mid5.html
+你先看看上述逻辑,以目前的信息来看,是否足够?
 
 目前的代码zhy\tasks\folder_table_probe_task.py
 看起来完全是没问题的,就目前为止,爬取数据应该就是没什么问题了看起来.
@@ -32,4 +33,4 @@
 run_step_async函数目前的功能就是给每一步兜底.对于playWright的直接API函数,重试3次即可;但是对于模块级的函数,比如说zhy\utils\zhy\zhy_table.py中的zhy_table,重试次数可以少一点.总之层级越高重试次数越少.
 这个run_step_async实现逻辑可以参考tyc项目的同名函数.但是zhy的这个函数暂时先不做页面检查(就是检查当前页面是不是验证页面等)
 
-我发现当前的日期筛选太过死板,只能筛选出
+我发现当前的日期筛选太过死板,只能筛选出最近一年的专利.我期望这个筛选模块的调用单独提出来,被一个新的流程文件调用,然后改造原模块为,传入两个日期,第一个日期一定早于第二个日期,然后筛选出公开日期在两个日期之间的专利.zhy\tasks\folder_table_probe_task.py中的关于筛选专利的代码先去掉.

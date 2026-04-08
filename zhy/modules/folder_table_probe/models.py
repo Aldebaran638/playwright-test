@@ -28,7 +28,7 @@ class PageProbeResult:
 
 
 @dataclass(frozen=True)
-class RecentPatentPublication:
+class FilteredPublicationRecord:
     space_id: str
     folder_id: str
     page_number: int
@@ -48,4 +48,3 @@ class FolderTableProbeSummary:
     failed_pages: list[int] = field(default_factory=list)
     total_rows_written: int = 0
     schema: TableSchema | None = None
-    recent_publications: list[RecentPatentPublication] = field(default_factory=list)

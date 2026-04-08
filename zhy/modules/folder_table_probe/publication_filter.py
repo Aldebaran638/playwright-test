@@ -1,11 +1,11 @@
 import json
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 
 from zhy.modules.folder_table.models import FolderTarget, TableRowRecord
 from zhy.modules.folder_table.writer import ensure_output_dir
-from zhy.modules.folder_table_probe.models import PageProbeResult, RecentPatentPublication
+from zhy.modules.folder_table_probe.models import FilteredPublicationRecord, PageProbeResult
 
 
 PUBLICATION_NUMBER_FIELD_EXACT_NAMES = (
@@ -46,6 +46,18 @@ def _normalize_label(label: str) -> str:
 
 def _normalize_value(value: str) -> str:
     return " ".join((value or "").replace("\n", " ").split())
+
+
+def parse_filter_date(date_text: str) -> date:
+    parsed_date = _parse_date(date_text)
+    if parsed_date is None:
+        raise ValueError(f"invalid date value: {date_text}")
+    return parsed_date
+
+
+def validate_date_range(start_date: date, end_date: date) -> None:
+    if start_date >= end_date:
+        raise ValueError("start_date must be earlier than end_date")
 
 
 def _find_publication_number_field(row: TableRowRecord) -> tuple[str, str] | None:
@@ -120,23 +132,40 @@ def _parse_date(value: str) -> date | None:
     return None
 
 
-# 简介：从单个文件夹的页探测结果中筛选最近一年的专利公开号。
+def _dedupe_publications(
+    matched_records: list[FilteredPublicationRecord],
+) -> list[FilteredPublicationRecord]:
+    deduped_records: list[FilteredPublicationRecord] = []
+    seen_publication_numbers: set[str] = set()
+
+    for record in matched_records:
+        publication_number = _normalize_value(record.publication_number)
+        if not publication_number or publication_number in seen_publication_numbers:
+            continue
+        seen_publication_numbers.add(publication_number)
+        deduped_records.append(record)
+
+    return deduped_records
+
+
+# 简介：从单个文件夹的页探测结果中筛选公开日期位于给定区间内的公开号。
 # 参数：
 # - target: 当前文件夹目标信息。
 # - page_results: 当前文件夹全部页探测结果。
-# - reference_date: 参考日期，默认使用当天。
+# - start_date: 起始日期，必须早于 end_date。
+# - end_date: 结束日期，必须晚于 start_date。
 # 返回值：
-# - 满足最近一年条件的公开号记录列表。
+# - 命中的公开号记录列表。
 # 逻辑：
-# - 每行先找公开日期；如果没有公开日期，再找第一个字段名包含“日期”或“时间”的字段；解析日期成功且位于最近一年窗口内时，提取公开号。
-def select_recent_publications(
+# - 每行先找公开日期；如果没有公开日期，再找第一个字段名包含“日期”或“时间”的字段；解析日期成功且位于闭区间内时，提取公开号。
+def select_publications_in_date_range_from_page_results(
     target: FolderTarget,
     page_results: list[PageProbeResult],
-    reference_date: date | None = None,
-) -> list[RecentPatentPublication]:
-    today = reference_date or date.today()
-    cutoff_date = today - timedelta(days=365)
-    matched_records: list[RecentPatentPublication] = []
+    start_date: date,
+    end_date: date,
+) -> list[FilteredPublicationRecord]:
+    validate_date_range(start_date, end_date)
+    matched_records: list[FilteredPublicationRecord] = []
 
     for page_result in page_results:
         if not page_result.success:
@@ -154,11 +183,11 @@ def select_recent_publications(
             parsed_date = _parse_date(date_field[1])
             if parsed_date is None:
                 continue
-            if parsed_date < cutoff_date or parsed_date > today:
+            if parsed_date < start_date or parsed_date > end_date:
                 continue
 
             matched_records.append(
-                RecentPatentPublication(
+                FilteredPublicationRecord(
                     space_id=target.space_id,
                     folder_id=target.folder_id,
                     page_number=row.page_number,
@@ -173,48 +202,97 @@ def select_recent_publications(
     return matched_records
 
 
-def _dedupe_publications(
-    matched_records: list[RecentPatentPublication],
-) -> list[RecentPatentPublication]:
-    deduped_records: list[RecentPatentPublication] = []
-    seen_publication_numbers: set[str] = set()
+def _load_rows_from_rows_jsonl(rows_path: Path) -> tuple[FolderTarget, list[TableRowRecord]]:
+    folder_id = rows_path.parent.name
+    space_id = rows_path.parent.parent.name
+    target = FolderTarget(
+        space_id=space_id,
+        folder_id=folder_id,
+        base_url="",
+    )
+    rows: list[TableRowRecord] = []
 
-    for record in matched_records:
-        publication_number = _normalize_value(record.publication_number)
-        if not publication_number or publication_number in seen_publication_numbers:
+    for line in rows_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
             continue
-        seen_publication_numbers.add(publication_number)
-        deduped_records.append(record)
+        payload = json.loads(line)
+        rows.append(
+            TableRowRecord(
+                folder_id=payload["folder_id"],
+                page_number=payload["page_number"],
+                row_key=payload["row_key"],
+                data=payload["data"],
+            )
+        )
 
-    return deduped_records
+    return target, rows
 
 
-# 简介：把最近一年专利的公开号聚合写入单个 JSON 文件。
+# 简介：从 folder_table_probe 输出目录中读取全部 rows.jsonl，并执行日期区间筛选。
 # 参数：
 # - output_root_dir: probe 输出根目录。
-# - matched_records: 当前任务累计命中的最近一年公开号记录。
-# - reference_date: 参考日期，默认使用当天。
+# - start_date: 起始日期，必须早于 end_date。
+# - end_date: 结束日期，必须晚于 start_date。
 # 返回值：
-# - 写出的 JSON 文件路径。
+# - 命中的公开号记录列表。
 # 逻辑：
-# - 对公开号去重后统一重写同一个 JSON 文件，既保留纯公开号列表，也保留每条记录所使用的日期字段信息。
-def write_recent_publication_numbers(
+# - 遍历输出根目录下每个 space/folder 的 rows.jsonl，逐文件夹构造成伪 page_results，再复用同一套筛选逻辑。
+def select_publications_in_date_range_from_output(
     output_root_dir: Path,
-    matched_records: list[RecentPatentPublication],
-    reference_date: date | None = None,
+    start_date: date,
+    end_date: date,
+) -> list[FilteredPublicationRecord]:
+    validate_date_range(start_date, end_date)
+    matched_records: list[FilteredPublicationRecord] = []
+
+    for rows_path in sorted(output_root_dir.glob("*/*/rows.jsonl")):
+        target, rows = _load_rows_from_rows_jsonl(rows_path)
+        page_results = [
+            PageProbeResult(
+                page_number=0,
+                success=True,
+                schema=None,
+                rows=rows,
+            )
+        ]
+        matched_records.extend(
+            select_publications_in_date_range_from_page_results(
+                target=target,
+                page_results=page_results,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        )
+
+    return _dedupe_publications(matched_records)
+
+
+# 简介：把日期区间筛选得到的公开号写入单个 JSON 文件。
+# 参数：
+# - output_path: 输出 JSON 文件路径。
+# - matched_records: 已筛选的公开号记录。
+# - start_date: 筛选起始日期。
+# - end_date: 筛选结束日期。
+# 返回值：
+# - 实际写出的 JSON 文件路径。
+# 逻辑：
+# - 先去重，再写出日期区间元数据、公开号列表以及完整命中记录。
+def write_filtered_publication_numbers(
+    output_path: Path,
+    matched_records: list[FilteredPublicationRecord],
+    start_date: date,
+    end_date: date,
 ) -> Path:
-    output_dir = ensure_output_dir(output_root_dir)
-    output_path = output_dir / "recent_publication_numbers.json"
-    today = reference_date or date.today()
-    cutoff_date = today - timedelta(days=365)
+    validate_date_range(start_date, end_date)
+    ensure_output_dir(output_path.parent)
     deduped_records = _dedupe_publications(matched_records)
 
     output_path.write_text(
         json.dumps(
             {
                 "generated_at": datetime.now().isoformat(timespec="seconds"),
-                "reference_date": today.isoformat(),
-                "cutoff_date": cutoff_date.isoformat(),
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
                 "publication_number_count": len(deduped_records),
                 "publication_numbers": [record.publication_number for record in deduped_records],
                 "records": [

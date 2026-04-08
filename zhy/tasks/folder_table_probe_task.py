@@ -15,13 +15,12 @@ if str(PROJECT_ROOT) not in sys.path:
 from zhy.modules.browser_context.browser_context_workflow import BrowserContextUserInput
 from zhy.modules.browser_context.runtime import build_browser_context
 from zhy.modules.common.browser_cookies import load_cookies_if_present, save_cookies
+from zhy.modules.common.run_step import run_step_async
 from zhy.modules.folder_table.page_url import parse_folder_target
 from zhy.modules.folder_table_probe import (
     FolderTableProbeConfig,
-    RecentPatentPublication,
     build_page_numbers,
     probe_folder_pages,
-    write_recent_publication_numbers,
 )
 from zhy.modules.site_init.initialize_site_async import initialize_site
 
@@ -82,6 +81,12 @@ DEFAULT_MAX_STABLE_SCROLL_ROUNDS = 3
 DEFAULT_HEADLESS = False
 # 默认是否强制使用整套默认参数，1 表示强制默认值，0 表示按命令行参数执行。
 DEFAULT_USE_DEFAULTS = 1
+# 当前 task 内直接 Playwright API 调用步骤的默认重试次数。
+DEFAULT_PLAYWRIGHT_API_RETRIES = 3
+# 当前 task 内模块级步骤的默认重试次数。
+DEFAULT_MODULE_STEP_RETRIES = 1
+# 当前 task 的重试等待秒数。
+DEFAULT_STEP_RETRY_DELAY_SECONDS = 1.0
 # 当前表格选择器定义，模块层统一通过参数接收，避免在模块内部硬编码。
 DEFAULT_SELECTORS = {
     "table_container": ".excel-table-container",
@@ -165,6 +170,54 @@ def build_folder_probe_config(args: argparse.Namespace) -> FolderTableProbeConfi
     )
 
 
+async def run_module_step(
+    step_name: str,
+    fn,
+    *args,
+    critical: bool = True,
+    retries: int = DEFAULT_MODULE_STEP_RETRIES,
+    **kwargs,
+):
+    step_result = await run_step_async(
+        fn,
+        *args,
+        step_name=step_name,
+        critical=critical,
+        retries=retries,
+        retry_delay_seconds=DEFAULT_STEP_RETRY_DELAY_SECONDS,
+        **kwargs,
+    )
+    return step_result.value
+
+
+async def run_playwright_api_step(
+    step_name: str,
+    fn,
+    *args,
+    critical: bool = True,
+    retries: int = DEFAULT_PLAYWRIGHT_API_RETRIES,
+    **kwargs,
+):
+    step_result = await run_step_async(
+        fn,
+        *args,
+        step_name=step_name,
+        critical=critical,
+        retries=retries,
+        retry_delay_seconds=DEFAULT_STEP_RETRY_DELAY_SECONDS,
+        **kwargs,
+    )
+    return step_result.value
+
+
+async def resolve_folder_target_async(folder_url: str):
+    return parse_folder_target(folder_url)
+
+
+async def close_managed_browser_context_async(managed) -> None:
+    await managed.close()
+
+
 # 简介：执行 folder_table_probe 总流程。
 # 参数：
 # - args: 命令行解析后的参数对象。
@@ -177,21 +230,31 @@ async def run_probe(args: argparse.Namespace) -> None:
     folder_urls = runtime_args.folder_urls or list(DEFAULT_FOLDER_URLS)
     probe_config = build_folder_probe_config(runtime_args)
     browser_context_user_input = build_browser_context_user_input(runtime_args)
-    matched_recent_publications: list[RecentPatentPublication] = []
 
     async with async_playwright() as playwright:
-        managed = await build_browser_context(
+        managed = await run_module_step(
+            "build_browser_context",
+            build_browser_context,
             playwright=playwright,
             user_input=browser_context_user_input,
             headless=runtime_args.headless,
+            critical=True,
         )
 
         try:
             # 先加载已有 Cookie，尽量避免重复登录。
-            await load_cookies_if_present(managed.context, runtime_args.cookie_path)
+            await run_module_step(
+                "load_cookies_if_present",
+                load_cookies_if_present,
+                managed.context,
+                runtime_args.cookie_path,
+                critical=False,
+            )
 
             # 当前步骤负责把站点初始化到可进入文件夹表格的状态。
-            login_page = await initialize_site(
+            login_page = await run_module_step(
+                "initialize_site",
+                initialize_site,
                 context=managed.context,
                 target_home_url=DEFAULT_TARGET_HOME_URL,
                 success_url=DEFAULT_SUCCESS_URL,
@@ -202,38 +265,58 @@ async def run_probe(args: argparse.Namespace) -> None:
                 goto_timeout_ms=DEFAULT_GOTO_TIMEOUT_MS,
                 timeout_seconds=DEFAULT_LOGIN_TIMEOUT_SECONDS,
                 poll_interval_seconds=DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
+                critical=True,
             )
-            await save_cookies(managed.context, runtime_args.cookie_path)
+            await run_module_step(
+                "save_cookies",
+                save_cookies,
+                managed.context,
+                runtime_args.cookie_path,
+                critical=False,
+            )
             logger.info("[folder_table_probe_task] site initialization finished at {}", login_page.url)
 
             # 文件夹之间严格串行执行，避免多个文件夹并发争抢同一浏览器上下文。
             for folder_url in folder_urls:
-                target = parse_folder_target(folder_url)
+                target = await run_module_step(
+                    "parse_folder_target",
+                    resolve_folder_target_async,
+                    folder_url,
+                    critical=False,
+                )
+                if target is None:
+                    logger.warning("[folder_table_probe_task] skip folder because target parsing failed: {}", folder_url)
+                    continue
 
                 # 当前循环只处理一个文件夹，文件夹内部的页码并发交给模块层控制。
-                summary = await probe_folder_pages(
+                summary = await run_module_step(
+                    f"probe_folder_pages:{target.folder_id}",
+                    probe_folder_pages,
                     context=managed.context,
                     target=target,
                     config=probe_config,
                     selectors=DEFAULT_SELECTORS,
+                    critical=False,
                 )
-                matched_recent_publications.extend(summary.recent_publications)
-                recent_publication_output_path = write_recent_publication_numbers(
-                    output_root_dir=runtime_args.output_root,
-                    matched_records=matched_recent_publications,
-                )
+                if summary is None:
+                    logger.warning("[folder_table_probe_task] skip folder because probing failed: {}", target.folder_id)
+                    continue
+
                 logger.info(
-                    "[folder_table_probe_task] folder {} finished: successful_pages={} failed_pages={} total_rows_written={} recent_publications={} output_dir={} recent_output={}",
+                    "[folder_table_probe_task] folder {} finished: successful_pages={} failed_pages={} total_rows_written={} output_dir={}",
                     summary.folder_id,
                     summary.successful_pages,
                     summary.failed_pages,
                     summary.total_rows_written,
-                    len(summary.recent_publications),
                     summary.output_dir,
-                    recent_publication_output_path,
                 )
         finally:
-            await managed.close()
+            await run_playwright_api_step(
+                "managed.close",
+                close_managed_browser_context_async,
+                managed,
+                critical=False,
+            )
 
 
 def main() -> None:

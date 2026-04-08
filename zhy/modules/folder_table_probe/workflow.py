@@ -7,7 +7,6 @@ from zhy.modules.folder_table.models import FolderTarget
 from zhy.modules.folder_table_probe.models import FolderTableProbeConfig, FolderTableProbeSummary
 from zhy.modules.folder_table_probe.output import write_folder_probe_output
 from zhy.modules.folder_table_probe.page_probe import probe_single_page
-from zhy.modules.folder_table_probe.recent_publications import select_recent_publications
 
 
 # 简介：根据命令行页码参数构造当前文件夹要探测的页码列表。
@@ -68,7 +67,6 @@ async def probe_folder_pages(
         for page_number in config.page_numbers
     ]
     page_results = await asyncio.gather(*page_tasks)
-    recent_publications = select_recent_publications(target=target, page_results=page_results)
 
     output_dir, appended_count, schema = write_folder_probe_output(
         output_root_dir=config.output_root_dir,
@@ -93,5 +91,4 @@ async def probe_folder_pages(
         failed_pages=failed_pages,
         total_rows_written=appended_count,
         schema=schema,
-        recent_publications=recent_publications,
     )
