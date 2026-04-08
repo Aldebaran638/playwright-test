@@ -26,6 +26,7 @@ from zhy.modules.folder_table.writer import append_rows, get_folder_output_dir, 
 
 
 async def wait_for_table_ready(page: Page, selectors: dict[str, str], timeout_ms: int) -> None:
+    # 表格主容器和内部滚动容器都出现后，才允许继续后续抓取步骤。
     await page.locator(selectors["table_container"]).wait_for(state="visible", timeout=timeout_ms)
     await page.locator(selectors["table_scroll_container"]).wait_for(
         state="visible",
@@ -34,6 +35,7 @@ async def wait_for_table_ready(page: Page, selectors: dict[str, str], timeout_ms
 
 
 async def apply_zoom(page: Page, zoom_ratio: float) -> None:
+    # 页面缩放用于扩大同屏可见行数，降低单页滚动次数。
     zoom_percent = max(int(zoom_ratio * 100), 10)
     await page.evaluate(
         "(zoomPercent) => { document.body.style.zoom = `${zoomPercent}%`; }",
@@ -45,6 +47,7 @@ def _merge_rows_by_key(
     rows_by_key: dict[str, TableRowRecord],
     new_rows: list[TableRowRecord],
 ) -> bool:
+    # 单页内用行主键去重，避免虚拟滚动导致重复收集同一条记录。
     changed = False
     for row in new_rows:
         if row.row_key in rows_by_key:
@@ -61,6 +64,7 @@ async def collect_single_page(
     config: FolderTableConfig,
     selectors: dict[str, str],
 ) -> PageCollectResult:
+    # 负责抓取单页数据: 打开分页 URL, 统一页大小, 解析 schema, 滚动到底并提取行。
     page_url = build_folder_page_url(target.base_url, page_number)
     logger.info("[folder_table] start collecting folder {} page {}", target.folder_id, page_number)
 
@@ -136,6 +140,7 @@ async def _collect_page_with_new_tab(
     config: FolderTableConfig,
     selectors: dict[str, str],
 ) -> PageCollectResult:
+    # 每个页码都在独立标签页中抓取，避免并发任务之间互相干扰。
     page = await context.new_page()
     try:
         return await collect_single_page(
@@ -155,6 +160,7 @@ async def collect_folder_table(
     config: FolderTableConfig,
     selectors: dict[str, str],
 ) -> FolderCollectResult:
+    # 负责整个文件夹的分页调度和结果落盘: 并发抓页, 发现空页后停止派发, 最终汇总 meta。
     output_dir = get_folder_output_dir(config.output_root_dir, target)
     next_page_number = config.start_page
     first_empty_page: int | None = None

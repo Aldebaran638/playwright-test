@@ -36,6 +36,21 @@ from zhy.tasks.folder_table_collect_task import (
 )
 
 
+DEFAULT_BROWSER_EXECUTABLE_PATH: str | None = None
+DEFAULT_USER_DATA_DIR: str | None = None
+DEFAULT_FOLDER_CONCURRENCY = 3
+DEFAULT_CONCURRENCY = 3
+DEFAULT_START_PAGE = 1
+DEFAULT_PAGE_SIZE = 100
+DEFAULT_ZOOM_RATIO = 0.8
+DEFAULT_PAGE_TIMEOUT_MS = 30000
+DEFAULT_TABLE_READY_TIMEOUT_MS = 15000
+DEFAULT_SCROLL_STEP_PIXELS = 420
+DEFAULT_SCROLL_PAUSE_SECONDS = 0.5
+DEFAULT_MAX_STABLE_SCROLL_ROUNDS = 3
+DEFAULT_HEADLESS = False
+
+
 @dataclass
 class ManagedBrowserContext:
     context: BrowserContext
@@ -109,22 +124,73 @@ async def build_browser_context(
     )
 
 
+def build_default_browser_context_user_input() -> BrowserContextUserInput:
+    # 统一收口总流程文件里的浏览器上下文默认值。
+    return BrowserContextUserInput(
+        browser_executable_path=DEFAULT_BROWSER_EXECUTABLE_PATH,
+        user_data_dir=DEFAULT_USER_DATA_DIR,
+    )
+
+
+def merge_browser_context_user_input(
+    user_input: BrowserContextUserInput,
+    default_input: BrowserContextUserInput,
+) -> BrowserContextUserInput:
+    # 用户没有输入时回落到总流程文件中硬编码的默认值。
+    normalized_user_input = user_input.normalized()
+    normalized_default_input = default_input.normalized()
+    return BrowserContextUserInput(
+        browser_executable_path=(
+            normalized_user_input.browser_executable_path
+            or normalized_default_input.browser_executable_path
+        ),
+        user_data_dir=(
+            normalized_user_input.user_data_dir
+            or normalized_default_input.user_data_dir
+        ),
+    )
+
+
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the full ZHY pipeline.")
     parser.add_argument("--folder-url", action="append", dest="folder_urls", default=[])
-    parser.add_argument("--concurrency", type=int, default=3)
-    parser.add_argument("--start-page", type=int, default=1)
-    parser.add_argument("--page-size", type=int, default=100)
-    parser.add_argument("--zoom-ratio", type=float, default=0.8)
-    parser.add_argument("--page-timeout-ms", type=int, default=30000)
-    parser.add_argument("--table-ready-timeout-ms", type=int, default=15000)
-    parser.add_argument("--scroll-step-pixels", type=int, default=420)
-    parser.add_argument("--scroll-pause-seconds", type=float, default=0.5)
-    parser.add_argument("--max-stable-scroll-rounds", type=int, default=3)
+    parser.add_argument("--folder-concurrency", type=int, default=DEFAULT_FOLDER_CONCURRENCY)
+    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
+    parser.add_argument("--start-page", type=int, default=DEFAULT_START_PAGE)
+    parser.add_argument("--page-size", type=int, default=DEFAULT_PAGE_SIZE)
+    parser.add_argument("--zoom-ratio", type=float, default=DEFAULT_ZOOM_RATIO)
+    parser.add_argument("--page-timeout-ms", type=int, default=DEFAULT_PAGE_TIMEOUT_MS)
+    parser.add_argument(
+        "--table-ready-timeout-ms",
+        type=int,
+        default=DEFAULT_TABLE_READY_TIMEOUT_MS,
+    )
+    parser.add_argument("--scroll-step-pixels", type=int, default=DEFAULT_SCROLL_STEP_PIXELS)
+    parser.add_argument("--scroll-pause-seconds", type=float, default=DEFAULT_SCROLL_PAUSE_SECONDS)
+    parser.add_argument(
+        "--max-stable-scroll-rounds",
+        type=int,
+        default=DEFAULT_MAX_STABLE_SCROLL_ROUNDS,
+    )
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT_DIR)
     parser.add_argument("--cookie-path", type=Path, default=DEFAULT_COOKIE_PATH)
-    parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--headless", action="store_true", default=DEFAULT_HEADLESS)
     return parser
+
+
+async def collect_single_folder(
+    context: BrowserContext,
+    target,
+    config: FolderTableConfig,
+    selectors: dict[str, str],
+):
+    # 单独包装单个文件夹抓取，方便总流程在文件夹级别做并发调度。
+    return await collect_folder_table(
+        context=context,
+        target=target,
+        config=config,
+        selectors=selectors,
+    )
 
 
 async def run_pipeline(args: argparse.Namespace) -> None:
@@ -143,7 +209,12 @@ async def run_pipeline(args: argparse.Namespace) -> None:
         max_stable_scroll_rounds=args.max_stable_scroll_rounds,
     )
 
-    user_input = collect_browser_context_user_input()
+    default_browser_context_input = build_default_browser_context_user_input()
+    collected_user_input = collect_browser_context_user_input()
+    user_input = merge_browser_context_user_input(
+        collected_user_input,
+        default_browser_context_input,
+    )
 
     async with async_playwright() as playwright:
         managed = await build_browser_context(
@@ -158,13 +229,24 @@ async def run_pipeline(args: argparse.Namespace) -> None:
             await save_cookies(managed.context, args.cookie_path)
             logger.info("[zhy_total_pipeline] site initialization finished at {}", login_page.url)
 
-            for target in folder_targets:
-                result = await collect_folder_table(
-                    context=managed.context,
-                    target=target,
-                    config=config,
-                    selectors=DEFAULT_SELECTORS,
-                )
+            folder_semaphore = asyncio.Semaphore(max(args.folder_concurrency, 1))
+
+            async def run_folder_with_limit(target):
+                # 限制同时运行的文件夹数量，避免一次开过多标签页。
+                async with folder_semaphore:
+                    return await collect_single_folder(
+                        context=managed.context,
+                        target=target,
+                        config=config,
+                        selectors=DEFAULT_SELECTORS,
+                    )
+
+            folder_tasks = [
+                asyncio.create_task(run_folder_with_limit(target))
+                for target in folder_targets
+            ]
+
+            for result in await asyncio.gather(*folder_tasks):
                 logger.info(
                     "[zhy_total_pipeline] folder {} finished: {} pages, {} rows",
                     result.folder_id,

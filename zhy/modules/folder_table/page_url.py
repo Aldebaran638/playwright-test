@@ -4,6 +4,7 @@ from zhy.modules.folder_table.models import FolderTarget
 
 
 def parse_folder_target(url: str) -> FolderTarget:
+    # 从文件夹 URL 中解析 spaceId 和 folderId，统一为后续流程使用的数据结构。
     parsed = urlparse(url)
     query = parse_qs(parsed.query)
     space_id = (query.get("spaceId") or [""])[0].strip()
@@ -22,6 +23,7 @@ def parse_folder_target(url: str) -> FolderTarget:
 
 
 def build_folder_page_url(base_url: str, page_number: int) -> str:
+    # 直接改写 page 参数，避免依赖前端翻页按钮。
     parsed = urlparse(base_url)
     query = parse_qs(parsed.query)
     query["page"] = [str(page_number)]
