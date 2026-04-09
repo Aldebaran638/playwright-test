@@ -157,6 +157,10 @@ def build_default_output_path(output_dir: Path, start_date_text: str, end_date_t
     return output_dir / f"publication_numbers_{start_date_text}_{end_date_text}.json"
 
 
+def build_plain_text_output_path(output_path: Path) -> Path:
+    return output_path.with_name(f"{output_path.stem}_plain.txt")
+
+
 def extract_space_and_folder_from_dir(folder_dir: Path) -> tuple[str, str]:
     name = folder_dir.name
     if "_" in name:
@@ -346,6 +350,20 @@ def write_filtered_publication_numbers(
     return output_path
 
 
+def write_plain_publication_number_list(
+    output_path: Path,
+    matched_records: list[FilteredPatentRecord],
+) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    deduped_records = dedupe_publication_numbers(matched_records)
+    lines = [f"{record.publication_number}," for record in deduped_records]
+    content = "\n".join(lines)
+    if content:
+        content += "\n"
+    output_path.write_text(content, encoding="utf-8")
+    return output_path
+
+
 def main() -> None:
     parser = build_argument_parser()
     args = parser.parse_args()
@@ -369,10 +387,16 @@ def main() -> None:
         start_date=start_date,
         end_date=end_date,
     )
+    plain_text_output_path = build_plain_text_output_path(output_path)
+    plain_text_written_path = write_plain_publication_number_list(
+        output_path=plain_text_output_path,
+        matched_records=matched_records,
+    )
     logger.info(
-        "[folder_patents_publication_filter_task] finished: matched_publication_numbers={} output={}",
+        "[folder_patents_publication_filter_task] finished: matched_publication_numbers={} json_output={} plain_text_output={}",
         len(matched_records),
         written_path,
+        plain_text_written_path,
     )
 
 
