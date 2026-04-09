@@ -1,6 +1,0 @@
-{"folder_id": "306f9f76aa5940a0acfc4b8a4dad8a18", "page_number": 1, "error_message": "failed to extract table schema after buffer wait"}
-{"folder_id": "306f9f76aa5940a0acfc4b8a4dad8a18", "page_number": 2, "error_message": "failed to extract table schema after buffer wait"}
-{"folder_id": "306f9f76aa5940a0acfc4b8a4dad8a18", "page_number": 3, "error_message": "failed to extract table schema after buffer wait"}
-{"folder_id": "306f9f76aa5940a0acfc4b8a4dad8a18", "page_number": 1, "error_message": "Page.goto: Target page, context or browser has been closed\nCall log:\n  - navigating to \"https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=306f9f76aa5940a0acfc4b8a4dad8a18&page=1\", waiting until \"domcontentloaded\"\n"}
-{"folder_id": "306f9f76aa5940a0acfc4b8a4dad8a18", "page_number": 1, "error_message": "failed to extract table schema after buffer wait"}
-{"folder_id": "306f9f76aa5940a0acfc4b8a4dad8a18", "page_number": 2, "error_message": "failed to extract table schema after buffer wait"}

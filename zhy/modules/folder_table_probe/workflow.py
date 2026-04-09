@@ -23,6 +23,7 @@ def build_page_numbers(
     start_page: int | None,
     end_page: int | None,
 ) -> list[int]:
+    # 不传 start/end 时，仅把起始页传给下游，由下游执行“自动翻到上限”。
     if start_page is None and end_page is None:
         return [page_number]
     if start_page is None or end_page is None:
@@ -50,23 +51,62 @@ async def probe_folder_pages(
     config: FolderTableProbeConfig,
     selectors: dict[str, str],
 ) -> FolderTableProbeSummary:
-    page_semaphore = asyncio.Semaphore(max(config.page_concurrency, 1))
+    if len(config.page_numbers) == 1:
+        # 自动翻页模式：从起始页开始逐页递增，直到命中越界重定向。
+        page_results = []
+        current_page = max(config.page_numbers[0], 1)
 
-    async def run_page_with_limit(page_number: int):
-        async with page_semaphore:
-            return await probe_single_page(
+        while True:
+            page_result = await probe_single_page(
                 context=context,
                 target=target,
-                page_number=page_number,
+                page_number=current_page,
                 config=config,
                 selectors=selectors,
             )
 
-    page_tasks = [
-        asyncio.create_task(run_page_with_limit(page_number))
-        for page_number in config.page_numbers
-    ]
-    page_results = await asyncio.gather(*page_tasks)
+            if page_result.redirected:
+                logger.info(
+                    "[folder_table_probe] folder {} reached page upper bound: requested_page={} redirected_to={}",
+                    target.folder_id,
+                    current_page,
+                    page_result.actual_page_number,
+                )
+                break
+
+            page_results.append(page_result)
+
+            # 非重定向异常时停止自动翻页，避免异常场景无限循环。
+            if not page_result.success:
+                logger.warning(
+                    "[folder_table_probe] folder {} stop auto paging due to page failure: page={} error={}",
+                    target.folder_id,
+                    page_result.page_number,
+                    page_result.error_message,
+                )
+                break
+
+            current_page += 1
+
+    else:
+        # 指定区间模式：按给定页码列表并发执行。
+        page_semaphore = asyncio.Semaphore(max(config.page_concurrency, 1))
+
+        async def run_page_with_limit(page_number: int):
+            async with page_semaphore:
+                return await probe_single_page(
+                    context=context,
+                    target=target,
+                    page_number=page_number,
+                    config=config,
+                    selectors=selectors,
+                )
+
+        page_tasks = [
+            asyncio.create_task(run_page_with_limit(page_number))
+            for page_number in config.page_numbers
+        ]
+        page_results = await asyncio.gather(*page_tasks)
 
     output_dir, appended_count, schema = write_folder_probe_output(
         output_root_dir=config.output_root_dir,

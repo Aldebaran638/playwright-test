@@ -1,0 +1,1063 @@
+{
+  "status" : true,
+  "error_code" : 0,
+  "data" : {
+    "free_user" : false,
+    "custom_fields_add" : true,
+    "patent_edit" : true,
+    "comment" : {
+      "read" : true,
+      "delete" : true
+    },
+    "family_tag" : "EXTEND",
+    "family_country" : "CN",
+    "collapse_setting" : {
+      "family_label_setting" : [ ],
+      "family_label_run_folder_switch" : false,
+      "family_label_run_folder_list" : [ ],
+      "family_label_switch" : true,
+      "collapse" : {
+        "field" : "APNO_FACET",
+        "rules" : [ {
+          "type" : "sort",
+          "field" : "PATENT_TYPE",
+          "value" : "B"
+        } ]
+      }
+    },
+    "visible_fields" : [ "PN", "TITLE", "LEGAL_STATUS", "ANCS", "APD", "PBD", "APN", "IN" ],
+    "freeze_count" : 0,
+    "fields_structure" : {
+      "PN" : {
+        "field_id" : "PN",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "TITLE" : {
+        "field_id" : "TITLE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "LEGAL_STATUS" : {
+        "field_id" : "LEGAL_STATUS",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "ANCS" : {
+        "field_id" : "ANCS",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "APD" : {
+        "field_id" : "APD",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "PBD" : {
+        "field_id" : "PBD",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "APN" : {
+        "field_id" : "APN",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "IN" : {
+        "field_id" : "IN",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : false
+      },
+      "ADC" : {
+        "field_id" : "ADC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "COMMENT" : {
+        "field_id" : "COMMENT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "AT" : {
+        "field_id" : "AT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "F_PBD" : {
+        "field_id" : "F_PBD",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "EXDT" : {
+        "field_id" : "EXDT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ABST" : {
+        "field_id" : "ABST",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ATC" : {
+        "field_id" : "ATC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "FAMILY_ID" : {
+        "field_id" : "FAMILY_ID",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "INPADOC_FAMILY_ID" : {
+        "field_id" : "INPADOC_FAMILY_ID",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "EXTEND_FAMILY_ID" : {
+        "field_id" : "EXTEND_FAMILY_ID",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "TTC" : {
+        "field_id" : "TTC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "SEIC" : {
+        "field_id" : "SEIC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "IPC" : {
+        "field_id" : "IPC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "IPC_M" : {
+        "field_id" : "IPC_M",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ISD" : {
+        "field_id" : "ISD",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "EXPD" : {
+        "field_id" : "EXPD",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ANC" : {
+        "field_id" : "ANC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ANS" : {
+        "field_id" : "ANS",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "AN" : {
+        "field_id" : "AN",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "LOC" : {
+        "field_id" : "LOC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "PRIORITY" : {
+        "field_id" : "PRIORITY",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "THUMB_120" : {
+        "field_id" : "THUMB_120",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "UPC" : {
+        "field_id" : "UPC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ANC_ADD" : {
+        "field_id" : "ANC_ADD",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "CPC" : {
+        "field_id" : "CPC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "CPC_ALL" : {
+        "field_id" : "CPC_ALL",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "CPC_M" : {
+        "field_id" : "CPC_M",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "FI" : {
+        "field_id" : "FI",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "FTERM" : {
+        "field_id" : "FTERM",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "GBC" : {
+        "field_id" : "GBC",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "SIMPLE_FAMILY_COUNT" : {
+        "field_id" : "SIMPLE_FAMILY_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "EXTEND_FAMILY_COUNT" : {
+        "field_id" : "EXTEND_FAMILY_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "INPADOC_FAMILY_COUNT" : {
+        "field_id" : "INPADOC_FAMILY_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "CITE_COUNT" : {
+        "field_id" : "CITE_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "CITED_COUNT" : {
+        "field_id" : "CITED_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "OREF_COUNT" : {
+        "field_id" : "OREF_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "PATENT_TYPE" : {
+        "field_id" : "PATENT_TYPE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "CLAIM_COUNT" : {
+        "field_id" : "CLAIM_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "EFAM_COUNTRY" : {
+        "field_id" : "EFAM_COUNTRY",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "SIMPLE_FAMILY_COUNTRY" : {
+        "field_id" : "SIMPLE_FAMILY_COUNTRY",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "WS_CREATED_AT" : {
+        "field_id" : "WS_CREATED_AT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "MCLMS" : {
+        "field_id" : "MCLMS",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "TARGET_SEQUENCE" : {
+        "field_id" : "TARGET_SEQUENCE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "TARGET_SEQUENCE_QUERY" : {
+        "field_id" : "TARGET_SEQUENCE_QUERY",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "TARGET_SEQUENCE_CLAIM" : {
+        "field_id" : "TARGET_SEQUENCE_CLAIM",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "TARGET_SEQUENCE_CLAIM_POSITION" : {
+        "field_id" : "TARGET_SEQUENCE_CLAIM_POSITION",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "TARGET_SEQUENCE_CLAIM_TEXT" : {
+        "field_id" : "TARGET_SEQUENCE_CLAIM_TEXT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "WS_ASSIGN_TO" : {
+        "field_id" : "WS_ASSIGN_TO",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "SAVED_TO_WORKSPACE" : {
+        "field_id" : "SAVED_TO_WORKSPACE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "FIRST_FADL_DATE" : {
+        "field_id" : "FIRST_FADL_DATE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ROOT_COMPANY_CURRENT_ASSIGNEE" : {
+        "field_id" : "ROOT_COMPANY_CURRENT_ASSIGNEE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ROOT_COMPANY_ASSIGNEE" : {
+        "field_id" : "ROOT_COMPANY_ASSIGNEE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ICLMS" : {
+        "field_id" : "ICLMS",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "TECHNICAL_TITLE" : {
+        "field_id" : "TECHNICAL_TITLE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "AI_TECHNICAL_PROBLEM" : {
+        "field_id" : "AI_TECHNICAL_PROBLEM",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "AI_TECHNICAL_METHOD" : {
+        "field_id" : "AI_TECHNICAL_METHOD",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "AI_TECHNICAL_BENEFIT" : {
+        "field_id" : "AI_TECHNICAL_BENEFIT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "ATCS" : {
+        "field_id" : "ATCS",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "HIT_STRUCTURE_COUNT" : {
+        "field_id" : "HIT_STRUCTURE_COUNT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "HIT_STRUCTURE" : {
+        "field_id" : "HIT_STRUCTURE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "HIT_STRUCTURE_MENTION" : {
+        "field_id" : "HIT_STRUCTURE_MENTION",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "HIT_STRUCTURE_CLAIM_POSITION" : {
+        "field_id" : "HIT_STRUCTURE_CLAIM_POSITION",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "HIT_STRUCTURE_CLAIM_TEXT" : {
+        "field_id" : "HIT_STRUCTURE_CLAIM_TEXT",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "PHS_PATENTED_DRUG" : {
+        "field_id" : "PHS_PATENTED_DRUG",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "PHS_CORE_TYPE_ID" : {
+        "field_id" : "PHS_CORE_TYPE_ID",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "PHS_CORE_DRUG_SOURCE" : {
+        "field_id" : "PHS_CORE_DRUG_SOURCE",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      },
+      "SEIC_ALL" : {
+        "field_id" : "SEIC_ALL",
+        "is_standard" : true,
+        "is_freeze" : false,
+        "is_hide" : true
+      }
+    },
+    "num" : 192,
+    "total" : 260,
+    "page" : 1,
+    "limit" : 20,
+    "stem" : false,
+    "q" : { },
+    "efq" : "",
+    "collapse" : {
+      "field" : "APNO_FACET",
+      "rules" : [ {
+        "field" : "PATENT_TYPE",
+        "value" : "B,A,D,U",
+        "type" : "sort"
+      }, {
+        "field" : "PBDT_YEARMONTHDAY",
+        "type" : "max"
+      } ]
+    },
+    "current_sort" : "wtasc",
+    "patents_data" : [ {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "支钦", "李新宇", "姚志勇" ],
+      "LEGAL_STATUS" : [ 17 ],
+      "PBD" : "2013-06-12",
+      "APD" : "2011-12-16",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种GLP-I类似物缓释微球制剂及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN103142488A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201110427618.2",
+      "PATENT_ID" : "beb58597-fe69-448c-81ce-b29b752033d4",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇" ],
+      "LEGAL_STATUS" : [ 15 ],
+      "PBD" : "2011-03-16",
+      "APD" : "2010-09-25",
+      "IN_LANG" : "CN",
+      "TITLE" : "药品罐",
+      "HAS_STANDARD" : false,
+      "PN" : "CN301481798S",
+      "TITLE_LANGS" : [ "CN" ],
+      "APN" : "CN201030532499.3",
+      "PATENT_ID" : "dfe1ea0f-5938-497e-88ef-70f9afb09446",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇" ],
+      "LEGAL_STATUS" : [ 15 ],
+      "PBD" : "2012-05-30",
+      "APD" : "2011-09-14",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种铝膜泡罩",
+      "HAS_STANDARD" : false,
+      "PN" : "CN202244621U",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201120344542.2",
+      "PATENT_ID" : "f43dc283-dfa6-42cc-bb9f-f985fffe433f",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "李新宇", "支钦" ],
+      "LEGAL_STATUS" : [ 17 ],
+      "PBD" : "2012-05-09",
+      "APD" : "2011-12-16",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种更加稳定的DDAVP多肽药物冻干粉针剂",
+      "HAS_STANDARD" : false,
+      "PN" : "CN102440968A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201110427659.1",
+      "PATENT_ID" : "d0d5270f-c538-47cd-bea5-09e7b1e2605f",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "李新宇", "姚志勇", "支钦" ],
+      "LEGAL_STATUS" : [ 17 ],
+      "PBD" : "2011-08-10",
+      "APD" : "2010-11-12",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种具有宫缩作用药物的生产工艺",
+      "HAS_STANDARD" : false,
+      "PN" : "CN102146122A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201010544419.5",
+      "PATENT_ID" : "f4d4d477-cd9c-4f84-8b4a-f9d23736f6bc",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "支钦", "姚志勇", "李云开", "舒遂智", "徐洲文" ],
+      "LEGAL_STATUS" : [ 17 ],
+      "PBD" : "2015-03-25",
+      "APD" : "2014-12-15",
+      "IN_LANG" : "CN",
+      "TITLE" : "戈舍瑞林组合物缓释微球制剂",
+      "HAS_STANDARD" : false,
+      "PN" : "CN104436169A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201410771028.5",
+      "PATENT_ID" : "24b555a9-2e8d-435d-a9f9-1de6f7d584ea",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "刘自成", "姚志勇", "李新宇", "支钦" ],
+      "LEGAL_STATUS" : [ 13, 66 ],
+      "PBD" : "2015-02-04",
+      "APD" : "2014-10-16",
+      "IN_LANG" : "CN",
+      "TITLE" : "水溶性冬凌草甲素衍生物及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN104327089A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201410550613.2",
+      "PATENT_ID" : "60206089-4264-4ba7-8ebb-09785c5d8904",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "支钦", "李新宇", "张建松", "舒遂智", "马洪季", "黄秋霞" ],
+      "LEGAL_STATUS" : [ 17 ],
+      "PBD" : "2015-09-09",
+      "APD" : "2015-06-09",
+      "IN_LANG" : "CN",
+      "TITLE" : "治疗复合感染的药物组合物及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN104888222A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201510312876.4",
+      "PATENT_ID" : "23fcbc9e-2fef-493a-b4a6-e178566dfc91",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "李新宇", "刘自成", "黄盛治", "曹演威", "黄秋霞" ],
+      "LEGAL_STATUS" : [ 17 ],
+      "PBD" : "2015-12-23",
+      "APD" : "2015-10-28",
+      "IN_LANG" : "CN",
+      "TITLE" : "治疗骨质疏松的药物组合物及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN105169394A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201510711281.6",
+      "PATENT_ID" : "c79310a8-5018-4aae-a700-fc65534a4bba",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "支钦", "李新宇" ],
+      "LEGAL_STATUS" : [ 15 ],
+      "PBD" : "2014-12-10",
+      "APD" : "2014-06-16",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种可振动的LHRH类似物缓释微球注射器",
+      "HAS_STANDARD" : false,
+      "PN" : "CN203989291U",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201420319160.8",
+      "PATENT_ID" : "c74ad416-ad84-4b3a-96a4-c445a6a60f5a",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "支钦", "姚志勇", "李新宇" ],
+      "LEGAL_STATUS" : [ 13 ],
+      "PBD" : "2011-09-14",
+      "APD" : "2010-12-16",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种辅助降血糖多肽药物的生产工艺",
+      "HAS_STANDARD" : false,
+      "PN" : "CN102180943A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201010594565.9",
+      "PATENT_ID" : "f907477b-e571-43a4-a84e-2be047b77f18",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "支钦", "李新宇", "曹演威", "周莹" ],
+      "LEGAL_STATUS" : [ 13 ],
+      "PBD" : "2016-04-20",
+      "APD" : "2015-12-26",
+      "IN_LANG" : "CN",
+      "TITLE" : "治疗骨质疏松的药物组合物缓释微球制剂及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN105497880A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201510989483.7",
+      "PATENT_ID" : "457b132c-5b81-4147-8218-4e95c36e694c",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "李新宇", "支钦", "张建松", "邱焕杰", "马洪季", "舒遂智" ],
+      "LEGAL_STATUS" : [ 16 ],
+      "PBD" : "2016-03-23",
+      "APD" : "2013-12-31",
+      "IN_LANG" : "CN",
+      "TITLE" : "葛根素衍生物及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN103694229B",
+      "TITLE_LANGS" : [ "CN" ],
+      "APN" : "CN201310746707.2",
+      "PATENT_ID" : "f82abb00-bd21-486a-ba2d-2cf2e588e5ff",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "李新宇", "支钦", "马洪季", "邱焕杰", "舒遂智", "李云开" ],
+      "LEGAL_STATUS" : [ 3 ],
+      "PBD" : "2017-08-04",
+      "APD" : "2013-12-26",
+      "IN_LANG" : "CN",
+      "TITLE" : "肺部给药长效脂质体制剂及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN103784403B",
+      "TITLE_LANGS" : [ "CN" ],
+      "APN" : "CN201310730257.8",
+      "PATENT_ID" : "091cb3e1-bd4a-46a6-a561-5337c4843840",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "李新宇", "支钦", "马洪季", "赖廷伟", "曹演威", "黄秋霞" ],
+      "LEGAL_STATUS" : [ 17 ],
+      "PBD" : "2015-01-07",
+      "APD" : "2014-09-12",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种GLP-1类似物注射用缓释植入剂及其制备",
+      "HAS_STANDARD" : false,
+      "PN" : "CN104258378A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201410464965.6",
+      "PATENT_ID" : "a7a1c176-d8ed-42fe-b10c-e8c32a568cde",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇" ],
+      "LEGAL_STATUS" : [ 15 ],
+      "PBD" : "2011-03-02",
+      "APD" : "2010-09-25",
+      "IN_LANG" : "CN",
+      "TITLE" : "药品包装袋",
+      "HAS_STANDARD" : false,
+      "PN" : "CN301476112S",
+      "TITLE_LANGS" : [ "CN" ],
+      "APN" : "CN201030532498.9",
+      "PATENT_ID" : "27ae05e5-0b63-4f2c-ace9-61d51a439239",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "支钦", "李新宇", "曹演威", "吴丽芬" ],
+      "LEGAL_STATUS" : [ 13 ],
+      "PBD" : "2016-05-04",
+      "APD" : "2016-01-04",
+      "IN_LANG" : "CN",
+      "TITLE" : "亮丙瑞林药物组合物注射型皮下植入剂",
+      "HAS_STANDARD" : false,
+      "PN" : "CN105535933A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201610006182.2",
+      "PATENT_ID" : "fc99369e-a1f5-4c1f-9679-7e3ee4181e6b",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "李新宇", "张建松", "黄盛治", "曹演威", "杨帆" ],
+      "LEGAL_STATUS" : [ 13 ],
+      "PBD" : "2014-11-19",
+      "APD" : "2014-09-02",
+      "IN_LANG" : "CN",
+      "TITLE" : "冬凌草甲素缓释脂质体及其制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN104146959A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201410443510.6",
+      "PATENT_ID" : "0e0ccb21-d88e-4460-a0ca-2da92466bbfd",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "姚志勇", "李新宇", "支钦" ],
+      "LEGAL_STATUS" : [ 3, 66 ],
+      "PBD" : "2017-08-11",
+      "APD" : "2011-09-03",
+      "IN_LANG" : "CN",
+      "TITLE" : "新的GLP‑Ⅰ类似物及其制备方法和用途",
+      "HAS_STANDARD" : false,
+      "PN" : "CN103189389B",
+      "TITLE_LANGS" : [ "CN" ],
+      "APN" : "CN201180038091.2",
+      "PATENT_ID" : "fd44e87f-2284-40de-9d32-32fa73bba7bd",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    }, {
+      "TITLE_LANG" : "CN",
+      "FAMILY_COUNTRY" : "",
+      "ANCS" : [ "深圳市健元医药科技有限公司" ],
+      "IN" : [ "张健存", "李新宇", "姚志勇", "支钦" ],
+      "LEGAL_STATUS" : [ 13 ],
+      "PBD" : "2011-10-19",
+      "APD" : "2011-04-18",
+      "IN_LANG" : "CN",
+      "TITLE" : "一种更加安全的棘白菌类抗真菌药的制备方法",
+      "HAS_STANDARD" : false,
+      "PN" : "CN102219833A",
+      "TITLE_LANGS" : [ "EN", "CN" ],
+      "APN" : "CN201110096989.7",
+      "PATENT_ID" : "fcae3336-ab25-4b30-9bfa-353537508aed",
+      "IPC" : [ ],
+      "WS_CREATED_AT" : "2026-04-09",
+      "HAS_LITIGATION" : false,
+      "HAS_LICENSE" : false,
+      "PATENT_COLOUR" : "",
+      "COMMENT" : { },
+      "TARGET_SEQUENCE" : [ ],
+      "TARGET_SEQUENCE_COUNT" : 0,
+      "TARGET_SEQUENCE_QUERY" : [ ],
+      "BIO_UK" : [ ],
+      "HIT_STRUCTURE_COUNT" : 0,
+      "HIT_STRUCTURE_LIST" : [ ],
+      "read_status" : false
+    } ]
+  }
+}

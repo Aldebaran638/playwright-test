@@ -5,7 +5,7 @@ from playwright.async_api import BrowserContext, Page, TimeoutError as Playwrigh
 
 from zhy.modules.folder_table.models import FolderTarget, TableRowRecord, TableSchema
 from zhy.modules.folder_table.page_size import ensure_page_size
-from zhy.modules.folder_table.page_url import build_folder_page_url
+from zhy.modules.folder_table.page_url import build_folder_page_url, extract_folder_page_number
 from zhy.modules.folder_table.table_extract import extract_visible_rows, normalize_cell_text, page_has_rows
 from zhy.modules.folder_table.table_schema import extract_schema_labels_from_title_attributes, extract_table_schema
 from zhy.modules.folder_table.table_scroll import (
@@ -97,6 +97,30 @@ async def wait_for_table_shell(page: Page, selectors: dict[str, str], timeout_ms
         state="visible",
         timeout=timeout_ms,
     )
+
+
+async def _resolve_actual_page_number_before_extract(
+    page: Page,
+    requested_page_number: int,
+) -> int | None:
+    # 某些场景会在 goto 后通过前端再做一次跳转，这里短暂轮询 URL，避免过早读取旧页码。
+    observed_page_number = extract_folder_page_number(page.url)
+    for _ in range(5):
+        await page.wait_for_timeout(150)
+        current_page_number = extract_folder_page_number(page.url)
+        if current_page_number != observed_page_number:
+            observed_page_number = current_page_number
+            continue
+        # 一旦连续两次一致就认为 URL 已稳定。
+        break
+
+    logger.info(
+        "[folder_table_probe] redirect-check requested_page={} actual_page={} url={}",
+        requested_page_number,
+        observed_page_number,
+        page.url,
+    )
+    return observed_page_number
 
 
 # 简介：输出当前页表格字段、首行、分页控件等调试信息。
@@ -314,6 +338,19 @@ async def probe_single_page(
         except PlaywrightTimeoutError as exc:
             logger.warning("[folder_table_probe] page={} table shell wait timed out: {}", page_number, exc)
 
+        # 在提取字段和行数据前执行重定向校验，避免越界页被重定向后误采集已有页数据。
+        actual_page_number = await _resolve_actual_page_number_before_extract(page, page_number)
+        if actual_page_number is not None and actual_page_number != page_number:
+            return PageProbeResult(
+                page_number=page_number,
+                success=False,
+                schema=None,
+                rows=[],
+                error_message=f"redirected_to_page:{actual_page_number}",
+                actual_page_number=actual_page_number,
+                redirected=True,
+            )
+
         await log_table_probe_snapshot(page, selectors, stage_name="before_page_size", page_number=page_number)
         await ensure_page_size(page, config.page_size, selectors, config.table_ready_timeout_ms)
         logger.info("[folder_table_probe] page={} page size normalized to {}", page_number, config.page_size)
@@ -336,6 +373,8 @@ async def probe_single_page(
             success=True,
             schema=schema,
             rows=rows,
+            actual_page_number=actual_page_number,
+            redirected=False,
         )
     except Exception as exc:
         logger.exception("[folder_table_probe] page={} failed: {}", page_number, exc)
@@ -345,6 +384,8 @@ async def probe_single_page(
             schema=None,
             rows=[],
             error_message=str(exc),
+            actual_page_number=None,
+            redirected=False,
         )
     finally:
         await page.close()

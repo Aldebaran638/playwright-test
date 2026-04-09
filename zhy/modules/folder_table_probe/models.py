@@ -25,6 +25,8 @@ class PageProbeResult:
     schema: TableSchema | None
     rows: list[TableRowRecord]
     error_message: str | None = None
+    actual_page_number: int | None = None
+    redirected: bool = False
 
 
 @dataclass(frozen=True)

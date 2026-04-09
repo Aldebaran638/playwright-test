@@ -1,11 +1,10 @@
 import argparse
 import asyncio
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 from loguru import logger
-from playwright.async_api import Browser, BrowserContext, Playwright, async_playwright
+from playwright.async_api import BrowserContext, async_playwright
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -15,34 +14,43 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from zhy.modules.browser_context.browser_context_cli import (
     collect_browser_context_user_input,
-    display_browser_context_workflow_result,
 )
-from zhy.modules.browser_context.browser_context_probe import probe_browser_context_mode
 from zhy.modules.browser_context.browser_context_workflow import (
     BrowserContextUserInput,
-    BrowserContextWorkflowResult,
-    BrowserEnvMode,
-    resolve_browser_context_mode,
 )
+from zhy.modules.browser_context.runtime import build_browser_context
 from zhy.modules.folder_table import FolderTableConfig, collect_folder_table, parse_folder_target
-from zhy.tasks.folder_table_collect_task import (
-    DEFAULT_COOKIE_PATH,
-    DEFAULT_FOLDER_URLS,
-    DEFAULT_GOTO_TIMEOUT_MS,
-    DEFAULT_LOADING_OVERLAY_SELECTOR,
-    DEFAULT_LOGIN_POLL_INTERVAL_SECONDS,
-    DEFAULT_LOGIN_TIMEOUT_SECONDS,
-    DEFAULT_OUTPUT_ROOT_DIR,
-    DEFAULT_SELECTORS,
-    DEFAULT_SUCCESS_CONTENT_SELECTOR,
-    DEFAULT_SUCCESS_HEADER_SELECTOR,
-    DEFAULT_SUCCESS_LOGGED_IN_SELECTOR,
-    DEFAULT_SUCCESS_URL,
-    DEFAULT_TARGET_HOME_URL,
-    initialize_site,
-    load_cookies_if_present,
-    save_cookies,
-)
+from zhy.modules.common.browser_cookies import load_cookies_if_present, save_cookies
+from zhy.modules.site_init.initialize_site_async import initialize_site
+
+
+DEFAULT_TARGET_HOME_URL = "https://analytics.zhihuiya.com/request_demo?project=search#/template"
+DEFAULT_SUCCESS_URL = DEFAULT_TARGET_HOME_URL
+DEFAULT_SUCCESS_HEADER_SELECTOR = "#header-wrapper"
+DEFAULT_SUCCESS_LOGGED_IN_SELECTOR = ".patsnap-biz-user_center--logged .patsnap-biz-avatar"
+DEFAULT_SUCCESS_CONTENT_SELECTOR = "#demo_user-info"
+DEFAULT_LOADING_OVERLAY_SELECTOR = "#page-pre-loading-bg"
+DEFAULT_GOTO_TIMEOUT_MS = 30000
+DEFAULT_LOGIN_TIMEOUT_SECONDS = 600.0
+DEFAULT_LOGIN_POLL_INTERVAL_SECONDS = 3.0
+DEFAULT_OUTPUT_ROOT_DIR = PROJECT_ROOT / "zhy" / "data" / "output" / "folder_tables"
+DEFAULT_COOKIE_PATH = PROJECT_ROOT / "zhy" / "data" / "other" / "site_init_cookies.json"
+DEFAULT_FOLDER_URLS = [
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=306f9f76aa5940a0acfc4b8a4dad8a18&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=7e56feab503f4c0fa5103f7e126a8aa0&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=7e80a0c91c024d378441f19a3abc5595&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=0b77a83bc2554d52b66e6350cb8729f3&page=1",
+    "https://workspace.zhihuiya.com/detail/patent/table?spaceId=ccb6031b05034c7ab2c4b120c2dc3155&folderId=55d9e6fa7c5b4cd6998e2209b386c8c6&page=1",
+]
+DEFAULT_SELECTORS = {
+    "table_container": ".excel-table-container",
+    "table_scroll_container": ".excel-table-container .ht_master .wtHolder",
+    "table_header_cells": ".excel-table-container .ht_master table.htCore thead th .colHeader",
+    "table_row_selector": ".excel-table-container .ht_master table.htCore tbody tr",
+    "page_size_trigger": ".pagination-size-select .el-input",
+    "page_size_selected_text": ".pagination-size-select_popper .el-select-dropdown__item.selected span",
+    "page_size_option_template": ".pagination-size-select_popper .el-select-dropdown__item:has-text('{size}')",
+}
 
 
 DEFAULT_BROWSER_EXECUTABLE_PATH: str | None = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
@@ -61,79 +69,6 @@ DEFAULT_EMPTY_PAGE_WAIT_SECONDS = 6.0
 DEFAULT_RETRY_COUNT = 3
 DEFAULT_RETRY_WAIT_SECONDS = 2.0
 DEFAULT_HEADLESS = False
-
-
-@dataclass
-class ManagedBrowserContext:
-    context: BrowserContext
-    browser: Browser | None
-    workflow_result: BrowserContextWorkflowResult
-
-    def is_persistent(self) -> bool:
-        return self.browser is None
-
-    async def close(self) -> None:
-        await self.context.close()
-        if self.browser is not None:
-            await self.browser.close()
-
-
-async def launch_context_for_mode(
-    playwright: Playwright,
-    mode: BrowserEnvMode,
-    user_input: BrowserContextUserInput,
-    headless: bool,
-) -> tuple[BrowserContext, Browser | None]:
-    chromium = playwright.chromium
-
-    if mode == "full_persistent":
-        context = await chromium.launch_persistent_context(
-            user_data_dir=user_input.user_data_dir or "",
-            executable_path=user_input.browser_executable_path,
-            headless=headless,
-        )
-        return context, None
-
-    if mode == "custom_browser_ephemeral":
-        browser = await chromium.launch(
-            executable_path=user_input.browser_executable_path,
-            headless=headless,
-        )
-        return await browser.new_context(), browser
-
-    if mode == "default_browser_persistent":
-        context = await chromium.launch_persistent_context(
-            user_data_dir=user_input.user_data_dir or "",
-            headless=headless,
-        )
-        return context, None
-
-    browser = await chromium.launch(headless=headless)
-    return await browser.new_context(), browser
-
-
-async def build_browser_context(
-    playwright: Playwright,
-    user_input: BrowserContextUserInput,
-    headless: bool,
-) -> ManagedBrowserContext:
-    workflow_result = resolve_browser_context_mode(user_input, probe_browser_context_mode)
-    display_browser_context_workflow_result(workflow_result)
-    if not workflow_result.success or workflow_result.resolved_mode is None:
-        raise RuntimeError("failed to resolve a usable browser context mode")
-
-    normalized = user_input.normalized()
-    context, browser = await launch_context_for_mode(
-        playwright=playwright,
-        mode=workflow_result.resolved_mode,
-        user_input=normalized,
-        headless=headless,
-    )
-    return ManagedBrowserContext(
-        context=context,
-        browser=browser,
-        workflow_result=workflow_result,
-    )
 
 
 def build_default_browser_context_user_input() -> BrowserContextUserInput:
