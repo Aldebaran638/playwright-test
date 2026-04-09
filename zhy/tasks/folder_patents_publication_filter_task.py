@@ -17,45 +17,12 @@ if str(PROJECT_ROOT) not in sys.path:
 DEFAULT_INPUT_ROOT_DIR = PROJECT_ROOT / "zhy" / "data" / "output" / "folder_patents_hybrid"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "zhy" / "data" / "output" / "publication_numbers"
 DEFAULT_FIELD_LABEL_MAP_PATH = PROJECT_ROOT / "zhy" / "data" / "other" / "8.json"
-DEFAULT_START_DATE = "2025-01-01"
+DEFAULT_START_DATE = "2025-04-08"
 DEFAULT_END_DATE = "2026-04-08"
 
-PUBLICATION_NUMBER_FIELD_KEYS = (
-    "PN",
-    "PCT_PN",
-    "publication_number",
-    "publicationNo",
-    "publication_no",
-)
+APPLICATION_NUMBER_FIELD_KEY = "APN"
 
-PUBLICATION_NUMBER_LABEL_KEYWORDS = (
-    "公开(公告)号",
-    "公开号",
-    "公告号",
-    "公开号",
-)
-
-PRIMARY_DATE_FIELD_KEYS = (
-    "PBDT",
-    "F_PBD",
-    "publication_date",
-    "publish_date",
-    "date",
-)
-
-PRIMARY_DATE_LABEL_KEYWORDS = (
-    "公开(公告)日",
-    "公开(公告)日期",
-    "公开日期",
-    "公告日期",
-    "首次公开日",
-)
-
-DATE_LIKE_LABEL_KEYWORDS = (
-    "日期",
-    "时间",
-    "日",
-)
+PUBLICATION_DATE_FIELD_KEY = "PBD"
 
 DATE_PATTERNS = (
     re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})"),
@@ -71,7 +38,7 @@ class FilteredPatentRecord:
     space_id: str
     folder_id: str
     page_number: int
-    publication_number: str
+    application_number: str
     date_field_name: str
     date_field_label: str
     date_value: str
@@ -83,7 +50,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Parse patents API output files, filter patents by date range, "
-            "and write publication numbers to a JSON file."
+            "and write APN values to a JSON file."
         )
     )
     parser.add_argument("--input-root", type=Path, default=DEFAULT_INPUT_ROOT_DIR)
@@ -187,68 +154,28 @@ def extract_patent_rows(page_payload: dict) -> list[dict]:
     return [item for item in patents_data if isinstance(item, dict)]
 
 
-def find_publication_number(row: dict, field_label_map: dict[str, str]) -> tuple[str, str, str] | None:
-    for key in PUBLICATION_NUMBER_FIELD_KEYS:
-        value = normalize_text(row.get(key))
-        if value:
-            label = field_label_map.get(key, "")
-            return key, label, value
-
-    for key, raw_value in row.items():
-        label = field_label_map.get(str(key), "")
-        key_text = normalize_text(key)
-        label_text = normalize_text(label)
-        value = normalize_text(raw_value)
-        if not value:
-            continue
-        if any(keyword in key_text for keyword in PUBLICATION_NUMBER_LABEL_KEYWORDS):
-            return str(key), label_text, value
-        if any(keyword in label_text for keyword in PUBLICATION_NUMBER_LABEL_KEYWORDS):
-            return str(key), label_text, value
-
-    return None
+def find_application_number(row: dict, field_label_map: dict[str, str]) -> tuple[str, str, str] | None:
+    value = normalize_text(row.get(APPLICATION_NUMBER_FIELD_KEY))
+    if not value:
+        return None
+    label = field_label_map.get(APPLICATION_NUMBER_FIELD_KEY, "")
+    return APPLICATION_NUMBER_FIELD_KEY, label, value
 
 
 def find_date_candidate(row: dict, field_label_map: dict[str, str]) -> tuple[str, str, str, date] | None:
-    for key in PRIMARY_DATE_FIELD_KEYS:
-        raw_value = row.get(key)
-        parsed = parse_date_like_value(raw_value)
-        if parsed is None:
-            continue
-        return key, field_label_map.get(key, ""), normalize_text(raw_value), parsed
-
-    for key, raw_value in row.items():
-        key_text = normalize_text(key)
-        label_text = field_label_map.get(str(key), "")
-        parsed = parse_date_like_value(raw_value)
-        if parsed is None:
-            continue
-        if any(keyword in key_text for keyword in PRIMARY_DATE_LABEL_KEYWORDS):
-            return str(key), label_text, normalize_text(raw_value), parsed
-        if any(keyword in label_text for keyword in PRIMARY_DATE_LABEL_KEYWORDS):
-            return str(key), label_text, normalize_text(raw_value), parsed
-
-    for key, raw_value in row.items():
-        key_text = normalize_text(key)
-        label_text = field_label_map.get(str(key), "")
-        parsed = parse_date_like_value(raw_value)
-        if parsed is None:
-            continue
-        if any(keyword in key_text for keyword in DATE_LIKE_LABEL_KEYWORDS):
-            return str(key), label_text, normalize_text(raw_value), parsed
-        if any(keyword in label_text for keyword in DATE_LIKE_LABEL_KEYWORDS):
-            return str(key), label_text, normalize_text(raw_value), parsed
-
-    for key, raw_value in row.items():
-        parsed = parse_date_like_value(raw_value)
-        if parsed is None:
-            continue
-        return str(key), field_label_map.get(str(key), ""), normalize_text(raw_value), parsed
-
-    return None
+    raw_value = row.get(PUBLICATION_DATE_FIELD_KEY)
+    parsed = parse_date_like_value(raw_value)
+    if parsed is None:
+        return None
+    return (
+        PUBLICATION_DATE_FIELD_KEY,
+        field_label_map.get(PUBLICATION_DATE_FIELD_KEY, ""),
+        normalize_text(raw_value),
+        parsed,
+    )
 
 
-def select_publication_numbers_in_date_range(
+def select_application_numbers_in_date_range(
     input_root: Path,
     field_label_map: dict[str, str],
     start_date: date,
@@ -275,8 +202,8 @@ def select_publication_numbers_in_date_range(
         page_number = int(page_match.group(1)) if page_match else 0
 
         for row in rows:
-            publication_field = find_publication_number(row, field_label_map)
-            if publication_field is None:
+            application_field = find_application_number(row, field_label_map)
+            if application_field is None:
                 continue
 
             date_field = find_date_candidate(row, field_label_map)
@@ -292,7 +219,7 @@ def select_publication_numbers_in_date_range(
                     space_id=space_id,
                     folder_id=folder_id,
                     page_number=page_number,
-                    publication_number=publication_field[2],
+                    application_number=application_field[2],
                     date_field_name=date_field[0],
                     date_field_label=normalize_text(date_field[1]),
                     date_value=date_field[2],
@@ -301,18 +228,18 @@ def select_publication_numbers_in_date_range(
                 )
             )
 
-    return dedupe_publication_numbers(matched_records)
+    return dedupe_application_numbers(matched_records)
 
 
-def dedupe_publication_numbers(records: list[FilteredPatentRecord]) -> list[FilteredPatentRecord]:
+def dedupe_application_numbers(records: list[FilteredPatentRecord]) -> list[FilteredPatentRecord]:
     deduped: list[FilteredPatentRecord] = []
     seen: set[str] = set()
 
     for record in records:
-        publication_number = normalize_text(record.publication_number)
-        if not publication_number or publication_number in seen:
+        application_number = normalize_text(record.application_number)
+        if not application_number or application_number in seen:
             continue
-        seen.add(publication_number)
+        seen.add(application_number)
         deduped.append(record)
     return deduped
 
@@ -324,19 +251,19 @@ def write_filtered_publication_numbers(
     end_date: date,
 ) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    deduped_records = dedupe_publication_numbers(matched_records)
+    deduped_records = dedupe_application_numbers(matched_records)
     payload = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
-        "publication_number_count": len(deduped_records),
-        "publication_numbers": [record.publication_number for record in deduped_records],
+        "application_number_count": len(deduped_records),
+        "application_numbers": [record.application_number for record in deduped_records],
         "records": [
             {
                 "space_id": record.space_id,
                 "folder_id": record.folder_id,
                 "page_number": record.page_number,
-                "publication_number": record.publication_number,
+                "application_number": record.application_number,
                 "date_field_name": record.date_field_name,
                 "date_field_label": record.date_field_label,
                 "date_value": record.date_value,
@@ -355,8 +282,8 @@ def write_plain_publication_number_list(
     matched_records: list[FilteredPatentRecord],
 ) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    deduped_records = dedupe_publication_numbers(matched_records)
-    lines = [f"{record.publication_number}," for record in deduped_records]
+    deduped_records = dedupe_application_numbers(matched_records)
+    lines = [f"{record.application_number}," for record in deduped_records]
     content = "\n".join(lines)
     if content:
         content += "\n"
@@ -375,7 +302,7 @@ def main() -> None:
     field_label_map = load_field_label_map(args.field_label_map)
     output_path = args.output_file or build_default_output_path(args.output_dir, args.start_date, args.end_date)
 
-    matched_records = select_publication_numbers_in_date_range(
+    matched_records = select_application_numbers_in_date_range(
         input_root=args.input_root,
         field_label_map=field_label_map,
         start_date=start_date,
@@ -393,7 +320,7 @@ def main() -> None:
         matched_records=matched_records,
     )
     logger.info(
-        "[folder_patents_publication_filter_task] finished: matched_publication_numbers={} json_output={} plain_text_output={}",
+        "[folder_patents_publication_filter_task] finished: matched_application_numbers={} json_output={} plain_text_output={}",
         len(matched_records),
         written_path,
         plain_text_written_path,
