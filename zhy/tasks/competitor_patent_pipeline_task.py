@@ -32,6 +32,11 @@ DEFAULT_LEGAL_STATUS_MAPPING_FILE = PROJECT_ROOT / "zhy" / "data" / "tmp" / "mid
 
 
 def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, Path]:
+    """简介：按日期层构建月度流程的 6 个标准输出目录。
+    参数：date_layer 为 YYYY-MM 格式的日期字符串。
+    返回值：6 元组 (原始输出根、补充信息输出根、文件夹映射、原始映射、报告输出、流程输出)。
+    逻辑：所有目录均按日期分层，便于多月份运行时自动隔离结果。
+    """
     base_output = PROJECT_ROOT / "zhy" / "data" / "output" / date_layer
     return (
         base_output / "folder_patents_hybrid",
@@ -203,6 +208,11 @@ DEFAULT_STEP_RETRY_DELAY_SECONDS = 1.0
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
+    """简介：构建命令行参数解析器。
+    参数：无。
+    返回值：ArgumentParser 实例。
+    逻辑：定义月份、浏览器、路径、请求参数等所有命令行选项。
+    """
     parser = argparse.ArgumentParser(description="Run the competitor patent monthly pipeline. Current stage executes login first.")
     parser.add_argument("--use-defaults", type=int, choices=[0, 1], default=DEFAULT_USE_DEFAULTS)
     parser.add_argument("--month", default=DEFAULT_MONTH)

@@ -135,12 +135,22 @@ def build_monthly_page_output_payload(parsed: dict, matched_rows: list[dict], so
 
 
 def build_monthly_page_output_path(output_root: Path, space_id: str, folder_id: str, source_page_number: int) -> Path:
+    """简介：构建单页专利数据的输出文件路径。
+    参数：output_root 为月度输出根目录；space_id 和 folder_id 为 workspace 标识；source_page_number 为原机接口页码。
+    返回值：单页 JSON 输出文件路径。
+    逻辑：按 space_id_folder_id 分创建竞争对手目录，每页对应一个 page_XXXX.json 文件。
+    """
     folder_dir = output_root / f"{space_id}_{folder_id}"
     folder_dir.mkdir(parents=True, exist_ok=True)
     return folder_dir / f"page_{source_page_number:04d}.json"
 
 
 def build_monthly_run_summary_path(output_root: Path, month_text: str) -> Path:
+    """简介：构建月度抓取汇总文件的输出路径。
+    参数：output_root 为输出根目录；month_text 为 YYYY-MM 格式月份。
+    返回值：汇总 JSON 文件路径。
+    逻辑：输出文件名按月份命名，便于查阅和审计。
+    """
     output_root.mkdir(parents=True, exist_ok=True)
     safe_month = month_text.replace("-", "_")
     return output_root / f"monthly_patents_{safe_month}_run_summary.json"

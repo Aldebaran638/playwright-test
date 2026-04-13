@@ -398,6 +398,11 @@ def compare_report_records(
 
 
 def group_records_by_competitor(records: list[dict]) -> list[dict]:
+    """简介：按竞争对手名称聚合差异记录。
+    参数：records 为差异记录列表。
+    返回值：按竞争对手分组后的记录列表 [{competitor_name, records [...]}, ...]。
+    逻辑：遍历所有差异记录，按 competitor_name 分组聚合，便于报告分块展示。
+    """
     grouped: dict[str, list[dict]] = {}
     for record in records:
         competitor_name = (
@@ -417,6 +422,11 @@ def group_records_by_competitor(records: list[dict]) -> list[dict]:
 
 
 def build_markdown_report(config: CompetitorPatentReportCompareConfig, report_payload: dict) -> str:
+    """简介：生成 Markdown 格式的差异报告。
+    参数：config 为对比流程配置；report_payload 为 compare_report_records() 的输出。
+    返回值：Markdown 文本字符串。
+    逻辑：先生成汇总表格，再按竞争对手逐条展示差异明细，便于人工审查和追踪。
+    """
     summary = report_payload["summary"]
     lines = [
         "# 竞争对手专利报表差异报告",
