@@ -9,6 +9,7 @@ from time import monotonic
 import requests
 from loguru import logger
 
+from zhy.modules.folder_patents_hybrid.abstract_fetch import enrich_page_patents_with_abstracts
 from zhy.modules.folder_patents_hybrid.models import AuthRefreshRequiredError, FolderAuthState, TransientRequestError
 from zhy.modules.folder_patents_hybrid.storage import build_output_path, load_json_file_any_utf, save_json
 
@@ -128,6 +129,10 @@ async def fetch_folder_pages(
     scheduler: RequestScheduler,
     proxies: dict[str, str] | None,
     headers: dict[str, str],
+    abstract_request_url: str,
+    abstract_request_template: dict,
+    abstract_request_headers: dict[str, str],
+    abstract_text_field_name: str,
 ) -> dict:
     """
     简介：抓取单个文件夹的分页专利数据并按页落盘。
@@ -154,6 +159,7 @@ async def fetch_folder_pages(
         "saved_files": [],
         "error": None,
         "auth_refresh_count": 0,
+        "abstract_failures": [],
     }
 
     next_page = start_page
@@ -215,16 +221,39 @@ async def fetch_folder_pages(
 
         for page_number, parsed in batch_results:
             output_path = build_output_path(output_root, space_id, folder_id, page_number)
-            save_json(output_path, parsed)
-            folder_summary["saved_files"].append(str(output_path))
-            folder_summary["pages_saved"] += 1
-            folder_summary["last_page_requested"] = page_number
 
             data = parsed.get("data") if isinstance(parsed, dict) else None
             if not isinstance(data, dict):
                 folder_summary["reason"] = "missing_data_object"
                 should_stop_folder = True
                 break
+
+            abstract_failures = await enrich_page_patents_with_abstracts(
+                page_payload=parsed,
+                text_field_name=abstract_text_field_name,
+                request_url=abstract_request_url,
+                request_template=abstract_request_template,
+                request_headers=abstract_request_headers,
+                folder_id=folder_id,
+                workspace_id=space_id,
+                timeout_seconds=timeout_seconds,
+                proxies=proxies,
+                scheduler=scheduler,
+                retry_count=retry_count,
+                retry_backoff_base_seconds=retry_backoff_base_seconds,
+            )
+            for failure in abstract_failures:
+                folder_summary["abstract_failures"].append(
+                    {
+                        "page_number": page_number,
+                        **failure,
+                    }
+                )
+
+            save_json(output_path, parsed)
+            folder_summary["saved_files"].append(str(output_path))
+            folder_summary["pages_saved"] += 1
+            folder_summary["last_page_requested"] = page_number
 
             patents_data = data.get("patents_data")
             patent_count = len(patents_data) if isinstance(patents_data, list) else 0

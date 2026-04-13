@@ -7,6 +7,7 @@ from playwright.async_api import async_playwright
 
 from zhy.modules.browser_context.browser_context_workflow import BrowserContextUserInput
 from zhy.modules.browser_context.runtime import build_browser_context
+from zhy.modules.folder_patents_hybrid.abstract_fetch import build_abstract_headers
 from zhy.modules.folder_patents_hybrid.api_fetch import RequestScheduler, fetch_folder_pages
 from zhy.modules.folder_patents_hybrid.auth_capture import refresh_auth_state
 from zhy.modules.folder_patents_hybrid.models import AuthRefreshRequiredError, FolderApiTarget, HybridTaskConfig
@@ -75,6 +76,15 @@ async def run_folder_patents_hybrid(config: HybridTaskConfig, folder_targets: li
                             x_patsnap_from=config.x_patsnap_from,
                             x_site_lang=config.x_site_lang,
                         )
+                        abstract_headers = build_abstract_headers(
+                            auth_state=auth_state,
+                            origin=config.abstract_origin,
+                            referer=config.abstract_referer,
+                            user_agent=config.user_agent,
+                            x_api_version=config.x_api_version,
+                            x_patsnap_from=config.abstract_x_patsnap_from,
+                            x_site_lang=config.x_site_lang,
+                        )
 
                         try:
                             summary = await fetch_folder_pages(
@@ -93,6 +103,10 @@ async def run_folder_patents_hybrid(config: HybridTaskConfig, folder_targets: li
                                 scheduler=scheduler,
                                 proxies=proxies,
                                 headers=headers,
+                                abstract_request_url=config.abstract_request_url,
+                                abstract_request_template=config.abstract_request_template,
+                                abstract_request_headers=abstract_headers,
+                                abstract_text_field_name=config.abstract_text_field_name,
                             )
                             summary["auth_refresh_count"] = refresh_count
                             break
@@ -117,6 +131,7 @@ async def run_folder_patents_hybrid(config: HybridTaskConfig, folder_targets: li
                         "saved_files": [],
                         "error": str(exc),
                         "auth_refresh_count": 0,
+                        "abstract_failures": [],
                     }
                     logger.exception("[folder_patents_hybrid_workflow] folder failed: {}", target.folder_id)
 

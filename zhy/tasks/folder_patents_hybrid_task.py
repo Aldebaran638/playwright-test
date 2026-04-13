@@ -12,12 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 from zhy.modules.common.run_step import run_step_async
-from zhy.modules.folder_patents_hybrid import (
-    FolderApiTarget,
-    HybridTaskConfig,
-    run_folder_patents_hybrid,
-    strip_or_none,
-)
+from zhy.modules.folder_patents_hybrid import FolderApiTarget, HybridTaskConfig, strip_or_none
+from zhy.modules.folder_patents_hybrid.workflow import run_folder_patents_hybrid
 from zhy.modules.folder_table.page_url import parse_folder_target
 
 
@@ -70,6 +66,38 @@ DEFAULT_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0"
 )
+
+DEFAULT_ABSTRACT_REQUEST_URL = "https://search-service.zhihuiya.com/core-search-api/search/translate/patent"
+DEFAULT_ABSTRACT_ORIGIN = "https://analytics.zhihuiya.com"
+DEFAULT_ABSTRACT_REFERER = "https://analytics.zhihuiya.com/"
+DEFAULT_ABSTRACT_X_PATSNAP_FROM = "w-analytics-patent-view"
+DEFAULT_ABSTRACT_TEXT_FIELD_NAME = "ABST_TEXT"
+DEFAULT_ABSTRACT_REQUEST_TEMPLATE = {
+    "highlight": True,
+    "lang": "CN",
+    "original": False,
+    "field": "ABST",
+    "source_type": "workspace",
+    "view_type": "workspace",
+    "bio_uk": "",
+    "uk": "undefined",
+    "ws_view_type": "tablelist",
+    "page": 1,
+    "_type": "workspace",
+    "sort": "wtasc",
+    "rows": "20",
+    "qid": "",
+    "efqid": "",
+    "cond": "",
+    "product": "Analytics",
+    "path": "",
+    "signature": "SlyJYZh8rcYm7FkbmyfSEbN7DmQefitqdIkhrtBXiFM=",
+    "shareFrom": "VIEW",
+    "date": "20260410T034642Z",
+    "expire": "94608000",
+    "shareId": "FGBB71D62FEF8EF82F7238F08BF528EC",
+    "version": "1.0",
+}
 
 # 默认起始页。
 DEFAULT_START_PAGE = 1
@@ -355,6 +383,12 @@ def build_hybrid_config(args: argparse.Namespace) -> HybridTaskConfig:
         x_api_version=args.x_api_version,
         x_patsnap_from=args.x_patsnap_from,
         user_agent=args.user_agent,
+        abstract_request_url=DEFAULT_ABSTRACT_REQUEST_URL,
+        abstract_origin=DEFAULT_ABSTRACT_ORIGIN,
+        abstract_referer=DEFAULT_ABSTRACT_REFERER,
+        abstract_x_patsnap_from=DEFAULT_ABSTRACT_X_PATSNAP_FROM,
+        abstract_request_template=DEFAULT_ABSTRACT_REQUEST_TEMPLATE,
+        abstract_text_field_name=DEFAULT_ABSTRACT_TEXT_FIELD_NAME,
         start_page=args.start_page,
         max_pages=args.max_pages,
         page_concurrency=args.page_concurrency,

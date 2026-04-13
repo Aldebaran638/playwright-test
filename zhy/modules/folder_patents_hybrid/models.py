@@ -113,6 +113,12 @@ class HybridTaskConfig:
     x_api_version: str
     x_patsnap_from: str
     user_agent: str
+    abstract_request_url: str
+    abstract_origin: str
+    abstract_referer: str
+    abstract_x_patsnap_from: str
+    abstract_request_template: dict
+    abstract_text_field_name: str
     start_page: int
     max_pages: int | None
     page_concurrency: int
