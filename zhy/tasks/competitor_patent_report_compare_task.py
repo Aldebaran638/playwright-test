@@ -12,9 +12,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 from zhy.modules.common.run_step import run_step_async
-from zhy.modules.competitor_patent_report_compare import (
+from zhy.modules.compare.competitor_patent_compare import run_competitor_patent_report_compare
+from zhy.modules.common.types.compare import (
     CompetitorPatentReportCompareConfig,
-    run_competitor_patent_report_compare,
 )
 
 
