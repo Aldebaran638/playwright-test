@@ -18,6 +18,7 @@ class CompetitorPatentReportConfig:
     folder_mapping_file: Path
     legal_status_mapping_file: Path
     output_dir: Path
+    translated_root: Path | None = None
 
 
 @dataclass(slots=True)

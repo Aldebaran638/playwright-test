@@ -172,9 +172,15 @@ def collect_report_rows(config: CompetitorPatentReportConfig) -> list[Competitor
             continue
 
         enriched_page_path = build_enriched_page_path(config.enriched_root, config.original_root, original_page_path)
+        translated_page_path = (
+            build_enriched_page_path(config.translated_root, config.original_root, original_page_path)
+            if config.translated_root is not None
+            else None
+        )
+        supplement_page_path = translated_page_path if translated_page_path is not None and translated_page_path.exists() else enriched_page_path
         enriched_records_by_patent_id: dict[str, dict] = {}
-        if enriched_page_path.exists():
-            enriched_payload = load_json_any_utf(enriched_page_path)
+        if supplement_page_path.exists():
+            enriched_payload = load_json_any_utf(supplement_page_path)
             enriched_records = enriched_payload.get("records", [])
             if isinstance(enriched_records, list):
                 for enriched_record in enriched_records:

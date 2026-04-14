@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from zhy.modules.common.types.translation import OpenAICompatibleClientConfig
+
 
 @dataclass(slots=True)
 class CompetitorPatentPipelineConfig:
@@ -19,6 +21,7 @@ class CompetitorPatentPipelineConfig:
     auth_state_file: Path
     original_output_root: Path
     enriched_output_root: Path
+    translated_output_root: Path
     folder_mapping_file: Path
     folder_mapping_raw_file: Path
     legal_status_mapping_file: Path
@@ -42,6 +45,11 @@ class CompetitorPatentPipelineConfig:
     basic_request_body_template: dict
     enrichment_resume: bool
     enrichment_request_concurrency: int
+    abstract_translation_enabled: bool
+    abstract_translation_resume: bool
+    abstract_translation_request_concurrency: int
+    abstract_translation_target_language: str
+    abstract_translation_client: OpenAICompatibleClientConfig | None
     target_home_url: str
     success_url: str
     success_header_selector: str

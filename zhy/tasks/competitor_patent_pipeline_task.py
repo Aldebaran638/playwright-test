@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from zhy.modules.common.run_step import run_step_async
 from zhy.modules.common.types.enrichment import ExistingOutputEnrichmentConfig
 from zhy.modules.common.types.folder_patents import AuthRefreshRequiredError
 from zhy.modules.common.types.pipeline import CompetitorPatentPipelineConfig
+from zhy.modules.common.types.translation import OpenAICompatibleClientConfig
 from zhy.modules.fetch.competitor_folder_mapping import fetch_competitor_folder_mapping
 from zhy.modules.fetch.folder_patents_api import RequestScheduler
 from zhy.modules.fetch.folder_patents_auth import refresh_auth_state
@@ -29,15 +31,17 @@ from zhy.modules.persist.json_io import load_json_file_any_utf, save_json
 from zhy.modules.persist.page_path import build_enrichment_page_path, iter_input_page_files, parse_space_folder_from_parent
 from zhy.modules.report.competitor_patent_report import run_competitor_patent_report
 from zhy.modules.transform.competitor_patent_pipeline import (
+    build_patent_abstract_translation_config,
     build_competitor_patent_report_config,
     build_existing_output_enrichment_config,
     build_monthly_auth_config,
-    load_enrichment_pages_written,
+    load_pages_written,
 )
 from zhy.modules.transform.enrichment import (
     build_enrichment_auth_refresh_config,
     build_enrichment_request_headers,
 )
+from zhy.modules.transform.translate_patent_abstracts import run_translate_patent_abstracts
 
 
 # 默认月份，后续按公开/公告日期 PBD 的 YYYY-MM 使用。
@@ -55,16 +59,17 @@ DEFAULT_AUTH_STATE_FILE = PROJECT_ROOT / "zhy" / "data" / "other" / "folder_pate
 DEFAULT_LEGAL_STATUS_MAPPING_FILE = PROJECT_ROOT / "zhy" / "data" / "tmp" / "mid1.json"
 
 
-def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, Path]:
+def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, Path, Path]:
     """简介：按日期层构建月度流程的 6 个标准输出目录。
     参数：date_layer 为 YYYY-MM 格式的日期字符串。
-    返回值：6 元组 (原始输出根、补充信息输出根、文件夹映射、原始映射、报告输出、流程输出)。
+    返回值：7 元组 (原始输出根、补充信息输出根、翻译输出根、文件夹映射、原始映射、报告输出、流程输出)。
     逻辑：所有目录均按日期分层，便于多月份运行时自动隔离结果。
     """
     base_output = PROJECT_ROOT / "zhy" / "data" / "output" / date_layer
     return (
         base_output / "folder_patents_hybrid",
         base_output / "folder_patents_hybrid_enriched",
+        base_output / "folder_patents_hybrid_translated",
         base_output / "competitor_patent_pipeline" / "competitor_folder_mapping.json",
         base_output / "competitor_patent_pipeline" / "competitor_folder_mapping_raw.json",
         base_output / "excel_reports",
@@ -75,6 +80,7 @@ def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, P
 (
     DEFAULT_ORIGINAL_OUTPUT_ROOT,
     DEFAULT_ENRICHED_OUTPUT_ROOT,
+    DEFAULT_TRANSLATED_OUTPUT_ROOT,
     DEFAULT_FOLDER_MAPPING_FILE,
     DEFAULT_FOLDER_MAPPING_RAW_FILE,
     DEFAULT_REPORT_OUTPUT_DIR,
@@ -227,6 +233,21 @@ DEFAULT_HEADLESS = False
 DEFAULT_ENRICHMENT_RESUME = True
 # 默认补充信息阶段并发数。
 DEFAULT_ENRICHMENT_REQUEST_CONCURRENCY = 5
+# 默认是否开启摘要翻译步骤。
+DEFAULT_ABSTRACT_TRANSLATION_ENABLED = False
+# 默认翻译阶段是否跳过已生成结果。
+DEFAULT_ABSTRACT_TRANSLATION_RESUME = True
+# 默认翻译阶段并发数。
+DEFAULT_ABSTRACT_TRANSLATION_REQUEST_CONCURRENCY = 3
+# 默认翻译目标语言。
+DEFAULT_ABSTRACT_TRANSLATION_TARGET_LANGUAGE = "简体中文"
+# 默认 OpenAI 兼容接口配置。
+DEFAULT_OPENAI_COMPATIBLE_BASE_URL = os.environ.get("OPENAI_COMPATIBLE_BASE_URL", "")
+DEFAULT_OPENAI_COMPATIBLE_API_KEY = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "")
+DEFAULT_OPENAI_COMPATIBLE_MODEL = os.environ.get("OPENAI_COMPATIBLE_MODEL", "")
+DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS = 60.0
+DEFAULT_OPENAI_COMPATIBLE_RETRY_COUNT = 3
+DEFAULT_OPENAI_COMPATIBLE_RETRY_BACKOFF_BASE_SECONDS = 2.0
 
 # 模块级步骤重试配置。
 DEFAULT_MODULE_STEP_RETRIES = 1
@@ -248,6 +269,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--auth-state-file", type=Path, default=DEFAULT_AUTH_STATE_FILE)
     parser.add_argument("--original-output-root", type=Path, default=DEFAULT_ORIGINAL_OUTPUT_ROOT)
     parser.add_argument("--enriched-output-root", type=Path, default=DEFAULT_ENRICHED_OUTPUT_ROOT)
+    parser.add_argument("--translated-output-root", type=Path, default=DEFAULT_TRANSLATED_OUTPUT_ROOT)
     parser.add_argument("--folder-mapping-file", type=Path, default=DEFAULT_FOLDER_MAPPING_FILE)
     parser.add_argument("--folder-mapping-raw-file", type=Path, default=DEFAULT_FOLDER_MAPPING_RAW_FILE)
     parser.add_argument("--legal-status-mapping-file", type=Path, default=DEFAULT_LEGAL_STATUS_MAPPING_FILE)
@@ -279,6 +301,16 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--patents-proxy", default=DEFAULT_PATENTS_PROXY)
     parser.add_argument("--patents-company-concurrency", type=int, default=DEFAULT_PATENTS_COMPANY_CONCURRENCY)
     parser.add_argument("--patents-test-folder-id", action="append", dest="patents_test_folder_ids", default=[])
+    parser.add_argument("--enable-abstract-translation", action="store_true", default=DEFAULT_ABSTRACT_TRANSLATION_ENABLED)
+    parser.add_argument("--disable-abstract-translation-resume", action="store_true", default=False)
+    parser.add_argument("--abstract-translation-request-concurrency", type=int, default=DEFAULT_ABSTRACT_TRANSLATION_REQUEST_CONCURRENCY)
+    parser.add_argument("--abstract-translation-target-language", default=DEFAULT_ABSTRACT_TRANSLATION_TARGET_LANGUAGE)
+    parser.add_argument("--openai-compatible-base-url", default=DEFAULT_OPENAI_COMPATIBLE_BASE_URL)
+    parser.add_argument("--openai-compatible-api-key", default=DEFAULT_OPENAI_COMPATIBLE_API_KEY)
+    parser.add_argument("--openai-compatible-model", default=DEFAULT_OPENAI_COMPATIBLE_MODEL)
+    parser.add_argument("--openai-compatible-timeout-seconds", type=float, default=DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS)
+    parser.add_argument("--openai-compatible-retry-count", type=int, default=DEFAULT_OPENAI_COMPATIBLE_RETRY_COUNT)
+    parser.add_argument("--openai-compatible-retry-backoff-base-seconds", type=float, default=DEFAULT_OPENAI_COMPATIBLE_RETRY_BACKOFF_BASE_SECONDS)
     parser.add_argument("--headless", action="store_true", default=DEFAULT_HEADLESS)
     return parser
 
@@ -302,6 +334,7 @@ def apply_default_mode(args: argparse.Namespace) -> argparse.Namespace:
     args.auth_state_file = DEFAULT_AUTH_STATE_FILE
     args.original_output_root = DEFAULT_ORIGINAL_OUTPUT_ROOT
     args.enriched_output_root = DEFAULT_ENRICHED_OUTPUT_ROOT
+    args.translated_output_root = DEFAULT_TRANSLATED_OUTPUT_ROOT
     args.folder_mapping_file = DEFAULT_FOLDER_MAPPING_FILE
     args.folder_mapping_raw_file = DEFAULT_FOLDER_MAPPING_RAW_FILE
     args.legal_status_mapping_file = DEFAULT_LEGAL_STATUS_MAPPING_FILE
@@ -333,6 +366,16 @@ def apply_default_mode(args: argparse.Namespace) -> argparse.Namespace:
     args.patents_proxy = DEFAULT_PATENTS_PROXY
     args.patents_company_concurrency = DEFAULT_PATENTS_COMPANY_CONCURRENCY
     args.patents_test_folder_ids = list(DEFAULT_PATENTS_TEST_FOLDER_IDS)
+    args.enable_abstract_translation = DEFAULT_ABSTRACT_TRANSLATION_ENABLED
+    args.disable_abstract_translation_resume = not DEFAULT_ABSTRACT_TRANSLATION_RESUME
+    args.abstract_translation_request_concurrency = DEFAULT_ABSTRACT_TRANSLATION_REQUEST_CONCURRENCY
+    args.abstract_translation_target_language = DEFAULT_ABSTRACT_TRANSLATION_TARGET_LANGUAGE
+    args.openai_compatible_base_url = DEFAULT_OPENAI_COMPATIBLE_BASE_URL
+    args.openai_compatible_api_key = DEFAULT_OPENAI_COMPATIBLE_API_KEY
+    args.openai_compatible_model = DEFAULT_OPENAI_COMPATIBLE_MODEL
+    args.openai_compatible_timeout_seconds = DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS
+    args.openai_compatible_retry_count = DEFAULT_OPENAI_COMPATIBLE_RETRY_COUNT
+    args.openai_compatible_retry_backoff_base_seconds = DEFAULT_OPENAI_COMPATIBLE_RETRY_BACKOFF_BASE_SECONDS
     args.headless = DEFAULT_HEADLESS
     return args
 
@@ -352,6 +395,7 @@ def build_config(args: argparse.Namespace) -> CompetitorPatentPipelineConfig:
         auth_state_file=args.auth_state_file,
         original_output_root=args.original_output_root,
         enriched_output_root=args.enriched_output_root,
+        translated_output_root=args.translated_output_root,
         folder_mapping_file=args.folder_mapping_file,
         folder_mapping_raw_file=args.folder_mapping_raw_file,
         legal_status_mapping_file=args.legal_status_mapping_file,
@@ -375,6 +419,26 @@ def build_config(args: argparse.Namespace) -> CompetitorPatentPipelineConfig:
         basic_request_body_template=DEFAULT_BASIC_REQUEST_BODY_TEMPLATE,
         enrichment_resume=DEFAULT_ENRICHMENT_RESUME,
         enrichment_request_concurrency=DEFAULT_ENRICHMENT_REQUEST_CONCURRENCY,
+        abstract_translation_enabled=bool(args.enable_abstract_translation),
+        abstract_translation_resume=not bool(args.disable_abstract_translation_resume),
+        abstract_translation_request_concurrency=args.abstract_translation_request_concurrency,
+        abstract_translation_target_language=args.abstract_translation_target_language,
+        abstract_translation_client=(
+            None
+            if not (
+                str(args.openai_compatible_base_url or "").strip()
+                and str(args.openai_compatible_api_key or "").strip()
+                and str(args.openai_compatible_model or "").strip()
+            )
+            else OpenAICompatibleClientConfig(
+                base_url=str(args.openai_compatible_base_url).strip(),
+                api_key=str(args.openai_compatible_api_key).strip(),
+                model=str(args.openai_compatible_model).strip(),
+                timeout_seconds=args.openai_compatible_timeout_seconds,
+                retry_count=args.openai_compatible_retry_count,
+                retry_backoff_base_seconds=args.openai_compatible_retry_backoff_base_seconds,
+            )
+        ),
         target_home_url=DEFAULT_TARGET_HOME_URL,
         success_url=DEFAULT_SUCCESS_URL,
         success_header_selector=DEFAULT_SUCCESS_HEADER_SELECTOR,
@@ -419,6 +483,9 @@ def build_pipeline_summary_payload(
     enrich_patents_status: str,
     enrich_patents_output: str,
     enrich_patents_pages_written: int,
+    translate_patents_status: str,
+    translate_patents_output: str,
+    translate_patents_pages_written: int,
     build_monthly_report_status: str,
     build_monthly_report_output: str,
 ) -> dict:
@@ -429,6 +496,7 @@ def build_pipeline_summary_payload(
             "auth_state_file": str(config.auth_state_file),
             "original_output_root": str(config.original_output_root),
             "enriched_output_root": str(config.enriched_output_root),
+            "translated_output_root": str(config.translated_output_root),
             "folder_mapping_file": str(config.folder_mapping_file),
             "folder_mapping_raw_file": str(config.folder_mapping_raw_file),
             "legal_status_mapping_file": str(config.legal_status_mapping_file),
@@ -457,6 +525,12 @@ def build_pipeline_summary_payload(
                 "status": enrich_patents_status,
                 "pages_written": enrich_patents_pages_written,
                 "output": enrich_patents_output,
+            },
+            {
+                "name": "translate_patent_abstracts",
+                "status": translate_patents_status,
+                "pages_written": translate_patents_pages_written,
+                "output": translate_patents_output,
             },
             {
                 "name": "build_monthly_report",
@@ -667,6 +741,24 @@ async def run_task(args: argparse.Namespace) -> Path:
     if enrich_step.value is None:
         raise RuntimeError("failed to enrich monthly patents")
     enrichment_summary_path = enrich_step.value
+    translation_summary_path: Path | None = None
+    translation_status = "skipped"
+    translation_pages_written = 0
+
+    if config.abstract_translation_enabled:
+        translation_step = await run_step_async(
+            run_translate_patent_abstracts,
+            build_patent_abstract_translation_config(config),
+            step_name="翻译非中文专利摘要",
+            critical=True,
+            retries=DEFAULT_MODULE_STEP_RETRIES,
+            retry_delay_seconds=DEFAULT_STEP_RETRY_DELAY_SECONDS,
+        )
+        if translation_step.value is None:
+            raise RuntimeError("failed to translate patent abstracts")
+        translation_summary_path = translation_step.value
+        translation_status = "done"
+        translation_pages_written = load_pages_written(translation_summary_path)
 
     report_step = await run_step_async(
         asyncio.to_thread,
@@ -693,7 +785,10 @@ async def run_task(args: argparse.Namespace) -> Path:
         monthly_patents_output=str(monthly_summary_path),
         enrich_patents_status="done",
         enrich_patents_output=str(enrichment_summary_path),
-        enrich_patents_pages_written=load_enrichment_pages_written(enrichment_summary_path),
+        enrich_patents_pages_written=load_pages_written(enrichment_summary_path),
+        translate_patents_status=translation_status,
+        translate_patents_output=str(translation_summary_path) if translation_summary_path is not None else "",
+        translate_patents_pages_written=translation_pages_written,
         build_monthly_report_status="done",
         build_monthly_report_output=str(report_output_path),
     )

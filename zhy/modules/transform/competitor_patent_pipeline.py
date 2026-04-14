@@ -7,6 +7,7 @@ from zhy.modules.common.types.enrichment import ExistingOutputEnrichmentConfig
 from zhy.modules.common.types.folder_patents import HybridTaskConfig
 from zhy.modules.common.types.pipeline import CompetitorPatentPipelineConfig
 from zhy.modules.common.types.report import CompetitorPatentReportConfig
+from zhy.modules.common.types.translation import PatentAbstractTranslationConfig
 
 
 def build_existing_output_enrichment_config(config: CompetitorPatentPipelineConfig) -> ExistingOutputEnrichmentConfig:
@@ -54,13 +55,26 @@ def build_competitor_patent_report_config(config: CompetitorPatentPipelineConfig
         month=config.month,
         original_root=config.original_output_root,
         enriched_root=config.enriched_output_root,
+        translated_root=config.translated_output_root if config.abstract_translation_enabled else None,
         folder_mapping_file=config.folder_mapping_file,
         legal_status_mapping_file=config.legal_status_mapping_file,
         output_dir=config.report_output_dir,
     )
 
 
-def load_enrichment_pages_written(summary_path: Path) -> int:
+def build_patent_abstract_translation_config(config: CompetitorPatentPipelineConfig) -> PatentAbstractTranslationConfig:
+    return PatentAbstractTranslationConfig(
+        input_root=config.enriched_output_root,
+        output_root=config.translated_output_root,
+        enabled=config.abstract_translation_enabled,
+        resume=config.abstract_translation_resume,
+        request_concurrency=config.abstract_translation_request_concurrency,
+        target_language=config.abstract_translation_target_language,
+        client=config.abstract_translation_client,
+    )
+
+
+def load_pages_written(summary_path: Path) -> int:
     try:
         payload = json.loads(summary_path.read_text(encoding="utf-8"))
     except Exception:
