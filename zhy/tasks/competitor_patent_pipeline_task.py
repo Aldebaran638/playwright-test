@@ -50,7 +50,7 @@ from zhy.modules.transform.translate_patent_abstracts import run_translate_paten
 
 
 # 默认月份，后续按公开/公告日期 PBD 的 YYYY-MM 使用。
-DEFAULT_MONTH = "2026-01"
+DEFAULT_MONTH = "2026-03"
 DEFAULT_OUTPUT_DATE_LAYER = DEFAULT_MONTH
 # 默认浏览器可执行文件路径，便于本地直接复用已安装浏览器。
 DEFAULT_BROWSER_EXECUTABLE_PATH: str | None = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
@@ -226,10 +226,7 @@ DEFAULT_PATENTS_PROXY = None
 # 按月专利抓取默认公司级并发数。
 DEFAULT_PATENTS_COMPANY_CONCURRENCY = 5
 # 按月专利抓取默认测试公司 folder_id 列表；为空表示跑全部公司。
-DEFAULT_PATENTS_TEST_FOLDER_IDS: list[str] = [ 
-    "1144dcc625ed489ebe790ba2e254f93d",
-    "5eba3e34aa9b403bbc825a6a72b17fc2"
-]
+DEFAULT_PATENTS_TEST_FOLDER_IDS: list[str] = [ ]
 
 # 默认是否强制使用流程文件内默认参数，1 表示强制默认，0 表示按命令行。
 DEFAULT_USE_DEFAULTS = 1
