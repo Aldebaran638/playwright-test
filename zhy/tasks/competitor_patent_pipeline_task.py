@@ -227,7 +227,8 @@ DEFAULT_PATENTS_PROXY = None
 DEFAULT_PATENTS_COMPANY_CONCURRENCY = 5
 # 按月专利抓取默认测试公司 folder_id 列表；为空表示跑全部公司。
 DEFAULT_PATENTS_TEST_FOLDER_IDS: list[str] = [ 
-    "1144dcc625ed489ebe790ba2e254f93d"
+    "1144dcc625ed489ebe790ba2e254f93d",
+    "5eba3e34aa9b403bbc825a6a72b17fc2"
 ]
 
 # 默认是否强制使用流程文件内默认参数，1 表示强制默认，0 表示按命令行。
@@ -239,7 +240,7 @@ DEFAULT_ENRICHMENT_RESUME = True
 # 默认补充信息阶段并发数。
 DEFAULT_ENRICHMENT_REQUEST_CONCURRENCY = 5
 # 默认是否开启摘要翻译步骤。
-DEFAULT_ABSTRACT_TRANSLATION_ENABLED = False
+DEFAULT_ABSTRACT_TRANSLATION_ENABLED = True
 # 默认翻译阶段是否跳过已生成结果。
 DEFAULT_ABSTRACT_TRANSLATION_RESUME = True
 # 默认翻译阶段并发数。
@@ -247,9 +248,9 @@ DEFAULT_ABSTRACT_TRANSLATION_REQUEST_CONCURRENCY = 3
 # 默认翻译目标语言。
 DEFAULT_ABSTRACT_TRANSLATION_TARGET_LANGUAGE = "简体中文"
 # 默认 OpenAI 兼容接口配置。
-DEFAULT_OPENAI_COMPATIBLE_BASE_URL = os.environ.get("OPENAI_COMPATIBLE_BASE_URL", "")
-DEFAULT_OPENAI_COMPATIBLE_API_KEY = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "")
-DEFAULT_OPENAI_COMPATIBLE_MODEL = os.environ.get("OPENAI_COMPATIBLE_MODEL", "")
+DEFAULT_OPENAI_COMPATIBLE_BASE_URL = "http://192.168.3.242:1995/v1"
+DEFAULT_OPENAI_COMPATIBLE_API_KEY = "dummy"
+DEFAULT_OPENAI_COMPATIBLE_MODEL = "Qwen3-32B-FP8"
 DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS = 60.0
 DEFAULT_OPENAI_COMPATIBLE_RETRY_COUNT = 3
 DEFAULT_OPENAI_COMPATIBLE_RETRY_BACKOFF_BASE_SECONDS = 2.0
@@ -550,7 +551,7 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
     """简介：执行现有月度输出的补充信息抓取步骤。
     参数：config 为补充信息阶段配置。
     返回值：补充信息 summary 文件路径。
-    逻辑：遍历原始 page 文件，补抓 ABST 与 ISD，并把结果镜像写入 enrichment 目录。
+    逻辑：遍历原始 page 文件，仅补抓 ABST，并把结果镜像写入 enrichment 目录。
     """
 
     from playwright.async_api import async_playwright
@@ -775,7 +776,7 @@ async def run_task(args: argparse.Namespace) -> Path:
     enrich_step = await run_step_async(
         run_existing_output_enrichment,
         build_existing_output_enrichment_config(config),
-        step_name="补充专利摘要与授权日期",
+        step_name="补充专利摘要",
         critical=True,
         retries=DEFAULT_MODULE_STEP_RETRIES,
         retry_delay_seconds=DEFAULT_STEP_RETRY_DELAY_SECONDS,

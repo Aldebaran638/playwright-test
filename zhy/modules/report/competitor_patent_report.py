@@ -28,6 +28,9 @@ REPORT_HEADERS = (
 COLUMN_WIDTHS = (8, 18, 28, 24, 24, 20, 14, 14, 18, 40)
 
 MONTH_PATTERN = re.compile(r"^\d{4}-\d{2}$")
+LEGAL_STATUS_NORMALIZATION_MAP = {
+    "PCT未进入指定国（指定期内）": "公开",
+}
 
 
 def validate_month_text(month_text: str) -> None:
@@ -130,8 +133,15 @@ def resolve_legal_status_text(codes: object, mapping: dict[str, str]) -> str:
         if not label:
             logger.warning("[competitor_patent_report] legal status code missing mapping: {}", code)
             continue
+        label = LEGAL_STATUS_NORMALIZATION_MAP.get(label, label)
         labels.append(label)
     return "；".join(labels)
+
+
+def resolve_authorization_date(*, publication_date: str, legal_status_text: str) -> str:
+    if "授权" not in legal_status_text:
+        return "/"
+    return publication_date or "/"
 
 
 def build_enriched_page_path(enriched_root: Path, original_root: Path, original_page_path: Path) -> Path:
@@ -207,6 +217,7 @@ def collect_report_rows(config: CompetitorPatentReportConfig) -> list[Competitor
             application_number = normalize_text(original_row.get("APN"))
             publication_number = normalize_text(original_row.get("PN"))
             application_or_publication_number = application_number or publication_number
+            legal_status_text = resolve_legal_status_text(original_row.get("LEGAL_STATUS"), legal_status_mapping)
 
             rows.append(
                 CompetitorPatentReportRow(
@@ -218,8 +229,11 @@ def collect_report_rows(config: CompetitorPatentReportConfig) -> list[Competitor
                     application_or_publication_number=application_or_publication_number,
                     application_date=normalize_text(original_row.get("APD")),
                     publication_date=publication_date,
-                    authorization_date=normalize_text(enriched_record.get("ISD")) or "/",
-                    legal_status_text=resolve_legal_status_text(original_row.get("LEGAL_STATUS"), legal_status_mapping),
+                    authorization_date=resolve_authorization_date(
+                        publication_date=publication_date,
+                        legal_status_text=legal_status_text,
+                    ),
+                    legal_status_text=legal_status_text,
                     technical_solution=normalize_text(enriched_record.get("ABST")),
                     source_folder_id=folder_id,
                     source_page_file=str(original_page_path),
