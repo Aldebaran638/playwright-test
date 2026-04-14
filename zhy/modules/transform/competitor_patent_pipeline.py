@@ -47,6 +47,8 @@ def build_existing_output_enrichment_config(config: CompetitorPatentPipelineConf
         abstract_request_template=config.abstract_request_template,
         basic_request_body_template=config.basic_request_body_template,
         request_concurrency=config.enrichment_request_concurrency,
+        target_page_files=None,
+        summary_path=None,
     )
 
 

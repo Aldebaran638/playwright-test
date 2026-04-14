@@ -226,7 +226,106 @@ DEFAULT_PATENTS_PROXY = None
 # 按月专利抓取默认公司级并发数。
 DEFAULT_PATENTS_COMPANY_CONCURRENCY = 5
 # 按月专利抓取默认测试公司 folder_id 列表；为空表示跑全部公司。
-DEFAULT_PATENTS_TEST_FOLDER_IDS: list[str] = [ ]
+DEFAULT_PATENTS_TEST_FOLDER_IDS: list[str] = [
+    "f3abc32038024c398b27fbc853ddb205",
+    "01d62c65b6004f12b53dc784a8c7c3db",
+    "5b8f65fdf98f485b9be7fae53b5f6ed6",
+    "dc7b61795b0e47be8962d13b799a21c7",
+    "f2dc68c92d574b1f848f2266033b014a",
+    "b331ddec5e6c49e59164bfe4fa132427",
+    "1144dcc625ed489ebe790ba2e254f93d",
+    "e63beb68be7f462cac8af8fe51a8df2b",
+    "5d4c2efe21fa4d2aa373c45baa5d61d8",
+    "4b40c13a4e3540f2a728c86d2bfbb2a0",
+    "5ec96a5a1736450b8b0c2342e251e102",
+    "3e2addf18de94f06a56580f3b130fba5",
+    "ee6b594b828140f3a68f2cc0f72d361d",
+    "336870f58f784cf4b4c549ce0f89316a",
+    "009169ef5aee4a43bec38f62cc14f4db",
+    "cb0c191101a2433bb624a75f267d42b6",
+    "65f1ca9627d440d7926106e39bb2c594",
+    "9bb085bc5e80483aa74a27f51c913669",
+    "d187d0a086cd4a92a109f80500226124",
+    "d99392d0fe564269b497d84ed4f31d8e",
+    "45cb70936cd24f05bf3f4fb8c3c72966",
+    "cf26fac1e28245b8a66b81d7e64a47ac",
+    "a249554547b34dc5b4ad82850f544085",
+    "1f9454e94df94dd196df0d0988893f7c",
+    "1962c8210697401ea9cc4213cec0101d",
+    "f34307e6b20c49db8f8927d28485cb67",
+    "f784815ff5634edfb8233f09a265ad7a",
+    "d7abe8b21119497491117e971748af4e",
+    "e5cb6f2045dd4851b748d1e2c4fe7b68",
+    "569b56ad2d7d4189a1a6ee5a124b6b04",
+    "310b60921f0c4400ab3c878ea664397a",
+    "8ae33d07b7d14d0baef1eafe1f0422f6",
+    "1044a5104b36448888c1c05a3cda29a9",
+    "5c36f7e6fa46431d91b1e34c833cc448",
+    "f73f14002fe94bd1a6ab8b0ab427230c",
+    "a86a01c2f58d4daa8a0593ae618cab6d",
+    "7ccce16780624173ae5a3efc2ef9d647",
+    "f5dfc19ec04b47b097ed8beaf6388624",
+    "a962bac504ef477396b881710a7eafad",
+    "edb9160ef53e49e09cfd34ff73a45589",
+    "9cfb7e1877c84906b3379d67b9911065",
+    "5c0aefd4596c472e95dc98790174d8b3",
+    "787a7346edaa4ffc8fc7ae7a603eb6d6",
+    "c45b5a8bd9c9437a8dc6d4c4e9bfa105",
+    "750e84c8956f47548185910ef165b8a5",
+    "c08a3139e0d248918e5a8b592b81f22b",
+    "6d408561684845b8b9fd00b625cf700c",
+    "d6f063dcbf0048e1ae71e526e74b3601",
+    "5fc0db0d625444f5a83f9231ac6bec6a",
+    "2e69f3fc17d7480e8e7134ee7af5467d",
+    "718230c735244402baecad348bb0a4bc",
+    "01b43cd9dac749e4af81ee6b5d212d76",
+    "e95ea4564435411c89ef2d41a52d7ca9",
+    "68044c896d0d4ffaaa3ae20a2a675dc8",
+    "75b63248203d4295ad71a909fa34cea7",
+    "580ad81b850848218970071551fc1a08",
+    "33596c1b7b0e445587353da28ac57498",
+    "2b21dce05f16400ea7593772148ee06a",
+    "4c16bd04d3554bd4ac9d590d885c2237",
+    "6caa6b1093fd4615b2606b1203d3baa3",
+    "793859e128104b6e974870666a735dae",
+    "c2061a741c81430583efefc32e9bfd57",
+    "a3acf4cd05484313a17a039be773527b",
+    "a2bab93e765e4a20853444797910912a",
+    "666aaebea71748509859a860665c38ec",
+    "03fbe996aa134fac835bda7b7766c09c",
+    "950a15fe004c4fa9a965216acde42676",
+    "c88509967b154eaa950b0c96573757e9",
+    "5eba3e34aa9b403bbc825a6a72b17fc2",
+    "c8ceee9e288740eaaf18988364cd3d56",
+    "397bd7fc5aad4e458f6a0452a04bf273",
+    "ad4ea54e4f244eee9ac7c0579b18d176",
+    "a069713d31694a7ea80771429593290f",
+    "30eb6fa113d046c984dfde6c82e905fe",
+    "756fc4f5c3344fb5af553d45ff528220",
+    "7d6a0bc6b8e940198c66df6fef83842d",
+    "57124406db7b4ee3915b1c3113e91dcf",
+    "007c18f329fb40d3897d37fa9a82a150",
+    "2300624a77364e3abbd0279bd5c72320",
+    "71a27f3ef8334824a1ffa55a67e619ab",
+    "eb9746f2b28a4832a7711792648bb63b",
+    "fd057347bfeb4aacafbcbbb4ffec399a",
+    "388b79988a4c4e1b86c48e7fca6a3d49",
+    "77d3ebc45ff641769e0ca6867d1c7c98",
+    "22db9b3fbb384ac4a1f127b3b7e70f4b",
+    "df7bf0881b1544a7a5fb0aa5a92cefee",
+    "83004801a39540b9833d5443efbae40d",
+    "da49b4d09d784eb7a43790c17611b861",
+    "526bb38ad5d34f4b88eb957449c2cc2e",
+    "6088f5943a5441b5b48fa96818efc6fe",
+    "4fb8c7db6a454ed88c6493cdafac1911",
+    "0c30e3cdc9a442368a4fb55a24f2505c",
+    "b0b683c182d14e679773e4d1b8ddef8d",
+    # "3d980f6f8f224e72a057292f8735c2ee", 欧莱雅
+    "ecf86655edc0489592233f22e986088a",
+    "0d7b8655db3846b1a21a39dae16f4a59",
+    "1486a184ed5f4d3599b251407aaf54a8"
+]
+
 
 # 默认是否强制使用流程文件内默认参数，1 表示强制默认，0 表示按命令行。
 DEFAULT_USE_DEFAULTS = 1
@@ -556,7 +655,11 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
     if not config.input_root.exists():
         raise FileNotFoundError(f"input root not found: {config.input_root}")
 
-    page_files = iter_input_page_files(config.input_root)
+    page_files = (
+        sorted(config.target_page_files)
+        if config.target_page_files is not None
+        else iter_input_page_files(config.input_root)
+    )
 
     summary = {
         "input_root": str(config.input_root),
@@ -566,9 +669,11 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
         "pages_written": 0,
         "pages_skipped": 0,
         "pages_failed": 0,
+        "pages_with_row_failures": 0,
+        "row_failures": 0,
         "files": [],
     }
-    summary_path = config.output_root / "run_summary.json"
+    summary_path = config.summary_path or (config.output_root / "run_summary.json")
     save_json(summary_path, summary)
 
     folder_page_map: dict[Path, list[Path]] = {}
@@ -578,7 +683,7 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
     active_page_files: list[Path] = []
     for folder_dir, folder_page_files in sorted(folder_page_map.items(), key=lambda item: str(item[0])):
         output_folder_dir = config.output_root / folder_dir.relative_to(config.input_root)
-        if config.resume and has_existing_page_files(output_folder_dir):
+        if config.target_page_files is None and config.resume and has_existing_page_files(output_folder_dir):
             logger.warning(
                 "[competitor_patent_pipeline] skip enrichment folder because existing page files detected: input_folder={} output_folder={}",
                 folder_dir,
@@ -685,6 +790,9 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
                             "failure_count": len(supplement_payload["failures"]),
                         }
                     )
+                    if supplement_payload["failures"]:
+                        summary["pages_with_row_failures"] += 1
+                        summary["row_failures"] += len(supplement_payload["failures"])
                 except Exception as exc:
                     logger.exception("[competitor_patent_pipeline] enrichment page failed: {}", page_file)
                     summary["pages_failed"] += 1

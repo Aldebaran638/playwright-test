@@ -16,6 +16,7 @@ from zhy.modules.persist.page_path import (
     build_monthly_page_output_path,
     build_monthly_run_summary_path,
     has_existing_page_files,
+    iter_folder_page_files,
 )
 
 
@@ -308,6 +309,8 @@ async def run_monthly_patent_fetch(
     managed,
     folder_mapping_file: Path,
     auth_config: HybridTaskConfig,
+    force_folder_ids: list[str] | None = None,
+    summary_path: Path | None = None,
 ) -> tuple[Path, dict]:
     """简介：按目标月份抓取所有竞争对手文件夹的专利数据。
     参数：config 为总流程配置；managed 为浏览器上下文；folder_mapping_file 为已过滤的竞争对手映射文件；auth_config 为鉴权抓取配置（由 task 层构建）。
@@ -321,14 +324,16 @@ async def run_monthly_patent_fetch(
     folder_items = mapping_payload.get("data", []) if isinstance(mapping_payload, dict) else []
     valid_items = [item for item in folder_items if isinstance(item, dict) and str(item.get("folder_id") or "").strip()]
     valid_items = filter_folder_items_for_test(valid_items, config.patents_test_folder_ids)
-    summary_path = build_monthly_run_summary_path(config.original_output_root, config.month)
+    summary_path = summary_path or build_monthly_run_summary_path(config.original_output_root, config.month)
     company_concurrency = max(config.patents_company_concurrency, 1)
+    force_folder_id_set = {str(folder_id).strip() for folder_id in (force_folder_ids or []) if str(folder_id).strip()}
     run_summary = {
         "month": config.month,
         "space_id": config.workspace_space_id,
         "folder_mapping_file": str(folder_mapping_file),
         "company_concurrency": company_concurrency,
         "test_folder_ids": list(config.patents_test_folder_ids),
+        "force_folder_ids": sorted(force_folder_id_set),
         "folders": [],
     }
     save_json(summary_path, run_summary)
@@ -341,7 +346,18 @@ async def run_monthly_patent_fetch(
     for folder_item in valid_items:
         folder_id = str(folder_item.get("folder_id") or "").strip()
         folder_dir = config.original_output_root / f"{config.workspace_space_id}_{folder_id}"
-        if has_existing_page_files(folder_dir):
+        if folder_id in force_folder_id_set:
+            existing_page_files = iter_folder_page_files(folder_dir)
+            if existing_page_files:
+                logger.warning(
+                    "[monthly_patents] clear existing page files before forced retry: folder_id={} file_count={} folder_dir={}",
+                    folder_id,
+                    len(existing_page_files),
+                    folder_dir,
+                )
+                for page_file in existing_page_files:
+                    page_file.unlink(missing_ok=True)
+        if folder_id not in force_folder_id_set and has_existing_page_files(folder_dir):
             logger.warning(
                 "[monthly_patents] skip folder because existing page files detected: folder_id={} folder_dir={}",
                 folder_id,
@@ -388,46 +404,70 @@ async def run_monthly_patent_fetch(
 
     async def process_single_folder(folder_item: dict) -> dict:
         folder_id = str(folder_item.get("folder_id") or "").strip()
+        folder_name = str(folder_item.get("folder_name") or "").strip()
         local_auth_headers = dict(auth_headers)
         local_auth_template = copy.deepcopy(auth_template)
         refresh_count = 0
-        while True:
-            try:
-                folder_summary = await fetch_monthly_patents_for_folder(
-                    config=config,
-                    scheduler=scheduler,
-                    headers=local_auth_headers,
-                    auth_template=local_auth_template,
-                    space_id=config.workspace_space_id,
-                    folder_item=folder_item,
-                )
-                folder_summary["auth_refresh_count"] = refresh_count
-                break
-            except AuthRefreshRequiredError:
-                if refresh_count >= config.patents_max_auth_refreshes:
-                    raise RuntimeError(f"auth refresh retry limit reached for folder {folder_id}")
-                refresh_count += 1
-                logger.warning(
-                    "[monthly_patents] refresh auth for monthly patents: folder_id={} refresh_count={}",
-                    folder_id,
-                    refresh_count,
-                )
-                new_auth_state = await refresh_auth_state(
-                    managed,
-                    auth_config,
-                    config.workspace_space_id,
-                    folder_id,
-                )
-                local_auth_headers = new_auth_state.to_headers(
-                    origin=config.workspace_origin,
-                    referer=config.workspace_referer,
-                    user_agent=config.workspace_user_agent,
-                    x_api_version=config.workspace_x_api_version,
-                    x_patsnap_from=config.workspace_x_patsnap_from,
-                    x_site_lang=config.workspace_x_site_lang,
-                )
-                local_auth_template = new_auth_state.body_template if isinstance(new_auth_state.body_template, dict) else {}
-        return folder_summary
+        try:
+            while True:
+                try:
+                    folder_summary = await fetch_monthly_patents_for_folder(
+                        config=config,
+                        scheduler=scheduler,
+                        headers=local_auth_headers,
+                        auth_template=local_auth_template,
+                        space_id=config.workspace_space_id,
+                        folder_item=folder_item,
+                    )
+                    folder_summary["auth_refresh_count"] = refresh_count
+                    break
+                except AuthRefreshRequiredError:
+                    if refresh_count >= config.patents_max_auth_refreshes:
+                        raise RuntimeError(f"auth refresh retry limit reached for folder {folder_id}")
+                    refresh_count += 1
+                    logger.warning(
+                        "[monthly_patents] refresh auth for monthly patents: folder_id={} refresh_count={}",
+                        folder_id,
+                        refresh_count,
+                    )
+                    new_auth_state = await refresh_auth_state(
+                        managed,
+                        auth_config,
+                        config.workspace_space_id,
+                        folder_id,
+                    )
+                    local_auth_headers = new_auth_state.to_headers(
+                        origin=config.workspace_origin,
+                        referer=config.workspace_referer,
+                        user_agent=config.workspace_user_agent,
+                        x_api_version=config.workspace_x_api_version,
+                        x_patsnap_from=config.workspace_x_patsnap_from,
+                        x_site_lang=config.workspace_x_site_lang,
+                    )
+                    local_auth_template = (
+                        new_auth_state.body_template if isinstance(new_auth_state.body_template, dict) else {}
+                    )
+            return folder_summary
+        except Exception as exc:
+            logger.exception(
+                "[monthly_patents] folder failed: folder_id={} folder_name={}",
+                folder_id,
+                folder_name,
+            )
+            return {
+                "space_id": config.workspace_space_id,
+                "folder_id": folder_id,
+                "folder_name": folder_name,
+                "status": "error",
+                "reason": "request_failed",
+                "requested_pages": 0,
+                "pages_saved": 0,
+                "matched_patent_count": 0,
+                "skipped_too_new_pages": 0,
+                "saved_files": [],
+                "error": str(exc),
+                "auth_refresh_count": refresh_count,
+            }
 
     for batch_start in range(0, len(active_items), company_concurrency):
         current_batch = active_items[batch_start: batch_start + company_concurrency]

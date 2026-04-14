@@ -47,3 +47,5 @@ class ExistingOutputEnrichmentConfig:
     abstract_request_url: str
     abstract_request_template: dict
     basic_request_body_template: dict
+    target_page_files: list[Path] | None = None
+    summary_path: Path | None = None
