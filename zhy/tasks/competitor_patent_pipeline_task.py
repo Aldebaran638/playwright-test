@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import json
 import sys
 from pathlib import Path
 
@@ -15,18 +14,23 @@ if str(PROJECT_ROOT) not in sys.path:
 from zhy.modules.browser.build_context import build_browser_context
 from zhy.modules.browser.context_config import BrowserContextUserInput
 from zhy.modules.common.run_step import run_step_async
-from zhy.modules.common.types.enrichment import ExistingOutputEnrichmentConfig
-from zhy.modules.common.types.folder_patents import HybridTaskConfig
 from zhy.modules.common.types.pipeline import CompetitorPatentPipelineConfig
-from zhy.modules.common.types.report import CompetitorPatentReportConfig
+from zhy.modules.fetch.competitor_folder_mapping import fetch_competitor_folder_mapping
 from zhy.modules.fetch.monthly_patents import run_monthly_patent_fetch
+from zhy.modules.folder_patents_enrichment.workflow import run_existing_output_enrichment
+from zhy.modules.init.pipeline_login import ensure_pipeline_logged_in
 from zhy.modules.persist.json_io import save_json
 from zhy.modules.report.competitor_patent_report import run_competitor_patent_report
-from zhy.tasks.folder_patents_enrichment_task import run_existing_output_enrichment
+from zhy.modules.transform.competitor_patent_pipeline import (
+    build_competitor_patent_report_config,
+    build_existing_output_enrichment_config,
+    build_monthly_auth_config,
+    load_enrichment_pages_written,
+)
 
 
 # 默认月份，后续按公开/公告日期 PBD 的 YYYY-MM 使用。
-DEFAULT_MONTH = "2026-02"
+DEFAULT_MONTH = "2026-01"
 DEFAULT_OUTPUT_DATE_LAYER = DEFAULT_MONTH
 # 默认浏览器可执行文件路径，便于本地直接复用已安装浏览器。
 DEFAULT_BROWSER_EXECUTABLE_PATH: str | None = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
@@ -200,7 +204,9 @@ DEFAULT_PATENTS_PROXY = None
 # 按月专利抓取默认公司级并发数。
 DEFAULT_PATENTS_COMPANY_CONCURRENCY = 5
 # 按月专利抓取默认测试公司 folder_id 列表；为空表示跑全部公司。
-DEFAULT_PATENTS_TEST_FOLDER_IDS: list[str] = [ ]
+DEFAULT_PATENTS_TEST_FOLDER_IDS: list[str] = [ 
+    "1144dcc625ed489ebe790ba2e254f93d"
+]
 
 # 默认是否强制使用流程文件内默认参数，1 表示强制默认，0 表示按命令行。
 DEFAULT_USE_DEFAULTS = 1
@@ -448,213 +454,6 @@ def build_pipeline_summary_payload(
             },
         ],
     }
-
-
-def build_existing_output_enrichment_config(config: CompetitorPatentPipelineConfig) -> ExistingOutputEnrichmentConfig:
-    return ExistingOutputEnrichmentConfig(
-        input_root=config.original_output_root,
-        output_root=config.enriched_output_root,
-        auth_state_file=config.auth_state_file,
-        cookie_file=config.cookie_file,
-        browser_executable_path=config.browser_executable_path,
-        user_data_dir=config.user_data_dir,
-        target_home_url=config.target_home_url,
-        success_url=config.success_url,
-        success_header_selector=config.success_header_selector,
-        success_logged_in_selector=config.success_logged_in_selector,
-        success_content_selector=config.success_content_selector,
-        loading_overlay_selector=config.loading_overlay_selector,
-        goto_timeout_ms=config.goto_timeout_ms,
-        login_timeout_seconds=config.login_timeout_seconds,
-        login_poll_interval_seconds=config.login_poll_interval_seconds,
-        capture_timeout_ms=config.patents_capture_timeout_ms,
-        max_auth_refreshes=config.patents_max_auth_refreshes,
-        headless=config.headless,
-        timeout_seconds=config.patents_timeout_seconds,
-        retry_count=config.patents_retry_count,
-        retry_backoff_base_seconds=config.patents_retry_backoff_base_seconds,
-        min_request_interval_seconds=config.patents_min_request_interval_seconds,
-        request_jitter_seconds=config.patents_request_jitter_seconds,
-        resume=config.enrichment_resume,
-        proxy=config.patents_proxy,
-        user_agent=config.workspace_user_agent,
-        x_api_version=config.workspace_x_api_version,
-        x_site_lang=config.workspace_x_site_lang,
-        analytics_origin=config.analytics_origin,
-        analytics_referer=config.analytics_referer,
-        analytics_x_patsnap_from=config.analytics_x_patsnap_from,
-        abstract_request_url=config.abstract_request_url,
-        abstract_request_template=config.abstract_request_template,
-        basic_request_body_template=config.basic_request_body_template,
-        request_concurrency=config.enrichment_request_concurrency,
-    )
-
-
-def build_competitor_patent_report_config(config: CompetitorPatentPipelineConfig) -> CompetitorPatentReportConfig:
-    return CompetitorPatentReportConfig(
-        month=config.month,
-        original_root=config.original_output_root,
-        enriched_root=config.enriched_output_root,
-        folder_mapping_file=config.folder_mapping_file,
-        legal_status_mapping_file=config.legal_status_mapping_file,
-        output_dir=config.report_output_dir,
-    )
-
-
-def load_enrichment_pages_written(summary_path: Path) -> int:
-    try:
-        payload = json.loads(summary_path.read_text(encoding="utf-8"))
-    except Exception:
-        return 0
-    try:
-        return int(payload.get("pages_written") or 0)
-    except (TypeError, ValueError):
-        return 0
-
-
-def filter_competitor_folder_items(payload: dict, parent_folder_id: str) -> list[dict]:
-    items = payload.get("data") if isinstance(payload, dict) else None
-    if not isinstance(items, list):
-        return []
-    filtered: list[dict] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        if str(item.get("parent_id") or "").strip() != parent_folder_id:
-            continue
-        filtered.append(item)
-    return filtered
-
-
-def build_filtered_folder_mapping_payload(config: CompetitorPatentPipelineConfig, filtered_items: list[dict]) -> dict:
-    return {
-        "status": True,
-        "space_id": config.workspace_space_id,
-        "parent_folder_id": config.competitor_parent_folder_id,
-        "total": len(filtered_items),
-        "data": filtered_items,
-    }
-
-
-def is_target_competitor_list_response(response, request_url: str) -> bool:
-    return response.request.method.upper() == "GET" and response.url == request_url
-
-
-async def ensure_pipeline_logged_in(managed, config: CompetitorPatentPipelineConfig) -> str:
-    from zhy.modules.common.browser_cookies import load_cookies_if_present, save_cookies
-    from zhy.modules.init.initialize_site_async import initialize_site
-
-    await load_cookies_if_present(managed.context, config.cookie_file)
-    page = await initialize_site(
-        context=managed.context,
-        target_home_url=config.target_home_url,
-        success_url=config.success_url,
-        success_header_selector=config.success_header_selector,
-        success_logged_in_selector=config.success_logged_in_selector,
-        success_content_selector=config.success_content_selector,
-        loading_overlay_selector=config.loading_overlay_selector,
-        goto_timeout_ms=config.goto_timeout_ms,
-        timeout_seconds=config.login_timeout_seconds,
-        poll_interval_seconds=config.login_poll_interval_seconds,
-    )
-    final_url = page.url
-    await save_cookies(managed.context, config.cookie_file)
-    await page.close()
-    logger.info("[competitor_patent_pipeline] login complete: final_url={}", final_url)
-    return final_url
-
-
-async def fetch_competitor_folder_mapping(managed, config: CompetitorPatentPipelineConfig) -> tuple[Path, int]:
-    page = await managed.context.new_page()
-    try:
-        async def open_target_page() -> None:
-            await page.goto(
-                config.competitor_list_page_url,
-                wait_until="domcontentloaded",
-                timeout=config.competitor_list_capture_timeout_ms,
-            )
-
-        try:
-            async with page.expect_response(
-                lambda response: is_target_competitor_list_response(response, config.competitor_list_request_url),
-                timeout=config.competitor_list_capture_timeout_ms,
-            ) as response_info:
-                await open_target_page()
-            response = await response_info.value
-        except Exception:
-            async with page.expect_response(
-                lambda response: is_target_competitor_list_response(response, config.competitor_list_request_url),
-                timeout=config.competitor_list_capture_timeout_ms,
-            ) as response_info:
-                await page.reload(wait_until="domcontentloaded", timeout=config.competitor_list_capture_timeout_ms)
-            response = await response_info.value
-
-        payload = await response.json()
-        config.folder_mapping_raw_file.parent.mkdir(parents=True, exist_ok=True)
-        config.folder_mapping_raw_file.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-
-        filtered_items = filter_competitor_folder_items(payload, config.competitor_parent_folder_id)
-        filtered_payload = build_filtered_folder_mapping_payload(config, filtered_items)
-        save_json(config.folder_mapping_file, filtered_payload)
-        logger.info(
-            "[competitor_patent_pipeline] competitor list captured: total={} filtered={} output={}",
-            len(payload.get("data", [])) if isinstance(payload, dict) and isinstance(payload.get("data"), list) else 0,
-            len(filtered_items),
-            config.folder_mapping_file,
-        )
-        return config.folder_mapping_file, len(filtered_items)
-    finally:
-        await page.close()
-
-
-def build_monthly_auth_config(config: CompetitorPatentPipelineConfig) -> HybridTaskConfig:
-    return HybridTaskConfig(
-        browser_executable_path=config.browser_executable_path,
-        user_data_dir=config.user_data_dir,
-        cookie_file=config.cookie_file,
-        auth_state_file=config.auth_state_file,
-        output_root=str(config.original_output_root),
-        target_home_url=config.target_home_url,
-        success_url=config.success_url,
-        success_header_selector=config.success_header_selector,
-        success_logged_in_selector=config.success_logged_in_selector,
-        success_content_selector=config.success_content_selector,
-        loading_overlay_selector=config.loading_overlay_selector,
-        goto_timeout_ms=config.goto_timeout_ms,
-        login_timeout_seconds=config.login_timeout_seconds,
-        login_poll_interval_seconds=config.login_poll_interval_seconds,
-        origin=config.workspace_origin,
-        referer=config.workspace_referer,
-        user_agent=config.workspace_user_agent,
-        x_api_version=config.workspace_x_api_version,
-        x_patsnap_from=config.workspace_x_patsnap_from,
-        x_site_lang=config.workspace_x_site_lang,
-        abstract_request_url=config.abstract_request_url,
-        abstract_origin=config.analytics_origin,
-        abstract_referer=config.analytics_referer,
-        abstract_x_patsnap_from=config.analytics_x_patsnap_from,
-        abstract_request_template=config.abstract_request_template,
-        abstract_text_field_name="ABST",
-        start_page=config.patents_start_page,
-        max_pages=None,
-        page_concurrency=1,
-        size=config.patents_page_size,
-        timeout_seconds=config.patents_timeout_seconds,
-        capture_timeout_ms=config.patents_capture_timeout_ms,
-        max_auth_refreshes=config.patents_max_auth_refreshes,
-        retry_count=config.patents_retry_count,
-        retry_backoff_base_seconds=config.patents_retry_backoff_base_seconds,
-        min_request_interval_seconds=config.patents_min_request_interval_seconds,
-        request_jitter_seconds=config.patents_request_jitter_seconds,
-        resume=True,
-        proxy=config.patents_proxy,
-        headless=config.headless,
-        fail_fast=False,
-    )
-
 
 async def run_task(args: argparse.Namespace) -> Path:
     """简介：执行竞争对手专利总流程 task。

@@ -35,11 +35,13 @@ DEFAULT_MODULE_STEP_RETRIES = 1
 DEFAULT_STEP_RETRY_DELAY_SECONDS = 1.0
 
 
-def build_argument_parser() -> argparse.ArgumentParser:    """简介：构建命令行参数解析器。
+def build_argument_parser() -> argparse.ArgumentParser:    
+    """简介：构建命令行参数解析器。
     参数：无。
     返回值：ArgumentParser 实例。
     逻辑：定义人工表、程序表和报告输出目录等命令行选项。
-    """    parser = argparse.ArgumentParser(description="Compare manual and generated competitor patent Excel reports.")
+    """    
+    parser = argparse.ArgumentParser(description="Compare manual and generated competitor patent Excel reports.")
     parser.add_argument("--use-defaults", type=int, choices=[0, 1], default=DEFAULT_USE_DEFAULTS)
     parser.add_argument("--manual-report-path", type=Path, default=DEFAULT_MANUAL_REPORT_PATH)
     parser.add_argument("--generated-report-path", type=Path, default=DEFAULT_GENERATED_REPORT_PATH)
