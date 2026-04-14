@@ -12,7 +12,11 @@ from zhy.modules.common.types.folder_patents import AuthRefreshRequiredError, Hy
 from zhy.modules.common.types.pipeline import CompetitorPatentPipelineConfig
 from zhy.modules.fetch.folder_patents_api import RequestScheduler, post_page_async
 from zhy.modules.persist.json_io import load_json_file_any_utf, save_json
-from zhy.modules.persist.page_path import build_monthly_page_output_path, build_monthly_run_summary_path
+from zhy.modules.persist.page_path import (
+    build_monthly_page_output_path,
+    build_monthly_run_summary_path,
+    has_existing_page_files,
+)
 
 
 def parse_month_bounds(month_text: str) -> tuple[date, date]:
@@ -144,6 +148,26 @@ def filter_folder_items_for_test(folder_items: list[dict], test_folder_ids: list
         item for item in folder_items
         if isinstance(item, dict) and str(item.get("folder_id") or "").strip() in normalized_ids
     ]
+
+
+def build_existing_output_skip_summary(*, output_root: Path, space_id: str, folder_item: dict) -> dict:
+    folder_id = str(folder_item.get("folder_id") or "").strip()
+    folder_name = str(folder_item.get("folder_name") or "").strip()
+    folder_dir = output_root / f"{space_id}_{folder_id}"
+    return {
+        "space_id": space_id,
+        "folder_id": folder_id,
+        "folder_name": folder_name,
+        "status": "skipped_existing_output",
+        "reason": "existing_page_files_detected",
+        "requested_pages": 0,
+        "pages_saved": 0,
+        "matched_patent_count": 0,
+        "skipped_too_new_pages": 0,
+        "saved_files": [str(path) for path in sorted(folder_dir.glob("page_*.json")) if path.is_file()],
+        "error": None,
+        "auth_refresh_count": 0,
+    }
 
 
 async def fetch_monthly_patents_for_folder(
@@ -312,6 +336,34 @@ async def run_monthly_patent_fetch(
     if not valid_items:
         return summary_path, run_summary
 
+    skipped_items: list[dict] = []
+    active_items: list[dict] = []
+    for folder_item in valid_items:
+        folder_id = str(folder_item.get("folder_id") or "").strip()
+        folder_dir = config.original_output_root / f"{config.workspace_space_id}_{folder_id}"
+        if has_existing_page_files(folder_dir):
+            logger.warning(
+                "[monthly_patents] skip folder because existing page files detected: folder_id={} folder_dir={}",
+                folder_id,
+                folder_dir,
+            )
+            skipped_items.append(
+                build_existing_output_skip_summary(
+                    output_root=config.original_output_root,
+                    space_id=config.workspace_space_id,
+                    folder_item=folder_item,
+                )
+            )
+            continue
+        active_items.append(folder_item)
+
+    if skipped_items:
+        run_summary["folders"].extend(skipped_items)
+        save_json(summary_path, run_summary)
+
+    if not active_items:
+        return summary_path, run_summary
+
     scheduler = RequestScheduler(
         concurrency=company_concurrency,
         min_interval_seconds=config.patents_min_request_interval_seconds,
@@ -322,7 +374,7 @@ async def run_monthly_patent_fetch(
         managed,
         auth_config,
         config.workspace_space_id,
-        str(valid_items[0].get("folder_id") or "").strip(),
+        str(active_items[0].get("folder_id") or "").strip(),
     )
     auth_headers = auth_state.to_headers(
         origin=config.workspace_origin,
@@ -377,8 +429,8 @@ async def run_monthly_patent_fetch(
                 local_auth_template = new_auth_state.body_template if isinstance(new_auth_state.body_template, dict) else {}
         return folder_summary
 
-    for batch_start in range(0, len(valid_items), company_concurrency):
-        current_batch = valid_items[batch_start: batch_start + company_concurrency]
+    for batch_start in range(0, len(active_items), company_concurrency):
+        current_batch = active_items[batch_start: batch_start + company_concurrency]
         batch_results = await asyncio.gather(*(process_single_folder(item) for item in current_batch))
         run_summary["folders"].extend(batch_results)
         save_json(summary_path, run_summary)

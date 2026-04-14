@@ -28,7 +28,12 @@ from zhy.modules.init.enrichment_auth import ensure_enrichment_auth_state
 from zhy.modules.init.pipeline_login import ensure_pipeline_logged_in
 from zhy.modules.persist.auth_state_io import load_auth_state_from_file
 from zhy.modules.persist.json_io import load_json_file_any_utf, save_json
-from zhy.modules.persist.page_path import build_enrichment_page_path, iter_input_page_files, parse_space_folder_from_parent
+from zhy.modules.persist.page_path import (
+    build_enrichment_page_path,
+    has_existing_page_files,
+    iter_input_page_files,
+    parse_space_folder_from_parent,
+)
 from zhy.modules.report.competitor_patent_report import run_competitor_patent_report
 from zhy.modules.transform.competitor_patent_pipeline import (
     build_patent_abstract_translation_config,
@@ -554,12 +559,6 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
         raise FileNotFoundError(f"input root not found: {config.input_root}")
 
     page_files = iter_input_page_files(config.input_root)
-    scheduler = RequestScheduler(
-        concurrency=max(int(config.request_concurrency), 1),
-        min_interval_seconds=config.min_request_interval_seconds,
-        jitter_seconds=config.request_jitter_seconds,
-    )
-    proxies = {"http": config.proxy, "https": config.proxy} if config.proxy else None
 
     summary = {
         "input_root": str(config.input_root),
@@ -573,6 +572,43 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
     }
     summary_path = config.output_root / "run_summary.json"
     save_json(summary_path, summary)
+
+    folder_page_map: dict[Path, list[Path]] = {}
+    for page_file in page_files:
+        folder_page_map.setdefault(page_file.parent, []).append(page_file)
+
+    active_page_files: list[Path] = []
+    for folder_dir, folder_page_files in sorted(folder_page_map.items(), key=lambda item: str(item[0])):
+        output_folder_dir = config.output_root / folder_dir.relative_to(config.input_root)
+        if config.resume and has_existing_page_files(output_folder_dir):
+            logger.warning(
+                "[competitor_patent_pipeline] skip enrichment folder because existing page files detected: input_folder={} output_folder={}",
+                folder_dir,
+                output_folder_dir,
+            )
+            summary["pages_skipped"] += len(folder_page_files)
+            for page_file in folder_page_files:
+                output_path = build_enrichment_page_path(config.output_root, config.input_root, page_file)
+                summary["files"].append(
+                    {
+                        "input_file": str(page_file),
+                        "output_file": str(output_path),
+                        "status": "skipped_existing_output",
+                    }
+                )
+            continue
+        active_page_files.extend(folder_page_files)
+
+    save_json(summary_path, summary)
+    if not active_page_files:
+        return summary_path
+
+    scheduler = RequestScheduler(
+        concurrency=max(int(config.request_concurrency), 1),
+        min_interval_seconds=config.min_request_interval_seconds,
+        jitter_seconds=config.request_jitter_seconds,
+    )
+    proxies = {"http": config.proxy, "https": config.proxy} if config.proxy else None
 
     browser_input = BrowserContextUserInput(
         browser_executable_path=config.browser_executable_path,
@@ -589,16 +625,22 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
             auth_state = await ensure_enrichment_auth_state(
                 config=config,
                 managed=managed,
-                page_files=page_files,
+                page_files=active_page_files,
                 auth_state=load_auth_state_from_file(config.auth_state_file),
             )
 
             refresh_count = 0
-            for page_file in page_files:
+            for page_file in active_page_files:
                 output_path = build_enrichment_page_path(config.output_root, config.input_root, page_file)
                 if config.resume and output_path.exists():
                     summary["pages_skipped"] += 1
-                    summary["files"].append({"input_file": str(page_file), "output_file": str(output_path), "status": "skipped"})
+                    summary["files"].append(
+                        {
+                            "input_file": str(page_file),
+                            "output_file": str(output_path),
+                            "status": "skipped_existing_output_file",
+                        }
+                    )
                     save_json(summary_path, summary)
                     continue
 
