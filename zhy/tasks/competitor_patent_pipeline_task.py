@@ -14,18 +14,29 @@ if str(PROJECT_ROOT) not in sys.path:
 from zhy.modules.browser.build_context import build_browser_context
 from zhy.modules.browser.context_config import BrowserContextUserInput
 from zhy.modules.common.run_step import run_step_async
+from zhy.modules.common.types.enrichment import ExistingOutputEnrichmentConfig
+from zhy.modules.common.types.folder_patents import AuthRefreshRequiredError
 from zhy.modules.common.types.pipeline import CompetitorPatentPipelineConfig
 from zhy.modules.fetch.competitor_folder_mapping import fetch_competitor_folder_mapping
+from zhy.modules.fetch.folder_patents_api import RequestScheduler
+from zhy.modules.fetch.folder_patents_auth import refresh_auth_state
 from zhy.modules.fetch.monthly_patents import run_monthly_patent_fetch
-from zhy.modules.folder_patents_enrichment.workflow import run_existing_output_enrichment
+from zhy.modules.fetch.patent_basic import build_page_supplement_payload
+from zhy.modules.init.enrichment_auth import ensure_enrichment_auth_state
 from zhy.modules.init.pipeline_login import ensure_pipeline_logged_in
-from zhy.modules.persist.json_io import save_json
+from zhy.modules.persist.auth_state_io import load_auth_state_from_file
+from zhy.modules.persist.json_io import load_json_file_any_utf, save_json
+from zhy.modules.persist.page_path import build_enrichment_page_path, iter_input_page_files, parse_space_folder_from_parent
 from zhy.modules.report.competitor_patent_report import run_competitor_patent_report
 from zhy.modules.transform.competitor_patent_pipeline import (
     build_competitor_patent_report_config,
     build_existing_output_enrichment_config,
     build_monthly_auth_config,
     load_enrichment_pages_written,
+)
+from zhy.modules.transform.enrichment import (
+    build_enrichment_auth_refresh_config,
+    build_enrichment_request_headers,
 )
 
 
@@ -454,6 +465,130 @@ def build_pipeline_summary_payload(
             },
         ],
     }
+
+
+async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig) -> Path:
+    """简介：执行现有月度输出的补充信息抓取步骤。
+    参数：config 为补充信息阶段配置。
+    返回值：补充信息 summary 文件路径。
+    逻辑：遍历原始 page 文件，补抓 ABST 与 ISD，并把结果镜像写入 enrichment 目录。
+    """
+
+    from playwright.async_api import async_playwright
+
+    if not config.input_root.exists():
+        raise FileNotFoundError(f"input root not found: {config.input_root}")
+
+    page_files = iter_input_page_files(config.input_root)
+    scheduler = RequestScheduler(
+        concurrency=max(int(config.request_concurrency), 1),
+        min_interval_seconds=config.min_request_interval_seconds,
+        jitter_seconds=config.request_jitter_seconds,
+    )
+    proxies = {"http": config.proxy, "https": config.proxy} if config.proxy else None
+
+    summary = {
+        "input_root": str(config.input_root),
+        "output_root": str(config.output_root),
+        "auth_state_file": str(config.auth_state_file),
+        "total_page_files": len(page_files),
+        "pages_written": 0,
+        "pages_skipped": 0,
+        "pages_failed": 0,
+        "files": [],
+    }
+    summary_path = config.output_root / "run_summary.json"
+    save_json(summary_path, summary)
+
+    browser_input = BrowserContextUserInput(
+        browser_executable_path=config.browser_executable_path,
+        user_data_dir=config.user_data_dir,
+    )
+
+    async with async_playwright() as playwright:
+        managed = await build_browser_context(
+            playwright=playwright,
+            user_input=browser_input,
+            headless=config.headless,
+        )
+        try:
+            auth_state = await ensure_enrichment_auth_state(
+                config=config,
+                managed=managed,
+                page_files=page_files,
+                auth_state=load_auth_state_from_file(config.auth_state_file),
+            )
+
+            refresh_count = 0
+            for page_file in page_files:
+                output_path = build_enrichment_page_path(config.output_root, config.input_root, page_file)
+                if config.resume and output_path.exists():
+                    summary["pages_skipped"] += 1
+                    summary["files"].append({"input_file": str(page_file), "output_file": str(output_path), "status": "skipped"})
+                    save_json(summary_path, summary)
+                    continue
+
+                try:
+                    while True:
+                        abstract_headers, basic_headers = build_enrichment_request_headers(config, auth_state)
+                        page_payload = load_json_file_any_utf(page_file)
+                        space_id, folder_id = parse_space_folder_from_parent(page_file.parent)
+                        try:
+                            supplement_payload = await build_page_supplement_payload(
+                                page_payload=page_payload,
+                                page_file=page_file,
+                                space_id=space_id,
+                                folder_id=folder_id,
+                                abstract_headers=abstract_headers,
+                                basic_headers=basic_headers,
+                                basic_request_body_template=config.basic_request_body_template,
+                                timeout_seconds=config.timeout_seconds,
+                                proxies=proxies,
+                                scheduler=scheduler,
+                                retry_count=config.retry_count,
+                                retry_backoff_base_seconds=config.retry_backoff_base_seconds,
+                                request_concurrency=config.request_concurrency,
+                            )
+                            break
+                        except AuthRefreshRequiredError:
+                            if refresh_count >= config.max_auth_refreshes:
+                                raise RuntimeError("auth refresh retry limit reached")
+                            refresh_count += 1
+                            auth_state = await refresh_auth_state(
+                                managed,
+                                build_enrichment_auth_refresh_config(config),
+                                space_id,
+                                folder_id,
+                            )
+
+                    save_json(output_path, supplement_payload)
+                    summary["pages_written"] += 1
+                    summary["files"].append(
+                        {
+                            "input_file": str(page_file),
+                            "output_file": str(output_path),
+                            "status": "ok",
+                            "failure_count": len(supplement_payload["failures"]),
+                        }
+                    )
+                except Exception as exc:
+                    logger.exception("[competitor_patent_pipeline] enrichment page failed: {}", page_file)
+                    summary["pages_failed"] += 1
+                    summary["files"].append(
+                        {
+                            "input_file": str(page_file),
+                            "output_file": str(output_path),
+                            "status": "error",
+                            "error": str(exc),
+                        }
+                    )
+
+                save_json(summary_path, summary)
+        finally:
+            await managed.close()
+
+    save_json(summary_path, summary)
+    return summary_path
 
 async def run_task(args: argparse.Namespace) -> Path:
     """简介：执行竞争对手专利总流程 task。
