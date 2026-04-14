@@ -98,19 +98,22 @@ def load_legal_status_mapping(path: Path) -> dict[str, str]:
     """
 
     payload = load_json_any_utf(path)
-    legal_status = payload.get("data", {}).get("legalStatus", {}) if isinstance(payload, dict) else {}
+    data = payload.get("data", {}) if isinstance(payload, dict) else {}
     mapping: dict[str, str] = {}
-    if not isinstance(legal_status, dict):
-        return mapping
-    for code, item in legal_status.items():
-        if not isinstance(item, dict):
+
+    for section_name in ("legalStatus", "legalEvents"):
+        section = data.get(section_name, {}) if isinstance(data, dict) else {}
+        if not isinstance(section, dict):
             continue
-        title = item.get("title")
-        if not isinstance(title, dict):
-            continue
-        label = normalize_text(title.get("cn")) or normalize_text(title.get("en"))
-        if label:
-            mapping[str(code)] = label
+        for code, item in section.items():
+            if not isinstance(item, dict):
+                continue
+            title = item.get("title")
+            if not isinstance(title, dict):
+                continue
+            label = normalize_text(title.get("cn")) or normalize_text(title.get("en"))
+            if label:
+                mapping[str(code)] = label
     return mapping
 
 

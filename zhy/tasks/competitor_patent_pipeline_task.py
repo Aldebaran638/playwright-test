@@ -62,10 +62,7 @@ DEFAULT_COOKIE_FILE = PROJECT_ROOT / "zhy" / "data" / "other" / "site_init_cooki
 # 默认鉴权缓存文件路径，供后续步骤复用。
 DEFAULT_AUTH_STATE_FILE = PROJECT_ROOT / "zhy" / "data" / "other" / "folder_patents_auth.json"
 # 默认法律状态映射文件。
-DEFAULT_LEGAL_STATUS_MAPPING_FILE = PROJECT_ROOT / "zhy" / "data" / "tmp" / "mid1.json"
-
-
-def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, Path, Path]:
+def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, Path, Path, Path]:
     """简介：按日期层构建月度流程的 6 个标准输出目录。
     参数：date_layer 为 YYYY-MM 格式的日期字符串。
     返回值：7 元组 (原始输出根、补充信息输出根、翻译输出根、文件夹映射、原始映射、报告输出、流程输出)。
@@ -78,6 +75,7 @@ def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, P
         base_output / "folder_patents_hybrid_translated",
         base_output / "competitor_patent_pipeline" / "competitor_folder_mapping.json",
         base_output / "competitor_patent_pipeline" / "competitor_folder_mapping_raw.json",
+        base_output / "competitor_patent_pipeline" / "legal_status_mapping.json",
         base_output / "excel_reports",
         base_output / "competitor_patent_pipeline",
     )
@@ -89,6 +87,7 @@ def build_output_paths(date_layer: str) -> tuple[Path, Path, Path, Path, Path, P
     DEFAULT_TRANSLATED_OUTPUT_ROOT,
     DEFAULT_FOLDER_MAPPING_FILE,
     DEFAULT_FOLDER_MAPPING_RAW_FILE,
+    DEFAULT_LEGAL_STATUS_MAPPING_FILE,
     DEFAULT_REPORT_OUTPUT_DIR,
     DEFAULT_PIPELINE_OUTPUT_DIR,
 ) = build_output_paths(DEFAULT_OUTPUT_DATE_LAYER)
