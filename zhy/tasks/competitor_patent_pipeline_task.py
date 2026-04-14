@@ -51,7 +51,7 @@ from zhy.modules.transform.translate_patent_abstracts import run_translate_paten
 
 
 # 默认月份，后续按公开/公告日期 PBD 的 YYYY-MM 使用。
-DEFAULT_MONTH = "2026-03"
+DEFAULT_MONTH = "2026-02"
 DEFAULT_OUTPUT_DATE_LAYER = DEFAULT_MONTH
 # 默认浏览器可执行文件路径，便于本地直接复用已安装浏览器。
 DEFAULT_BROWSER_EXECUTABLE_PATH: str | None = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
