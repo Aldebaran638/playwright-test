@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from zhy.modules.browser.build_context import build_browser_context
 from zhy.modules.browser.context_config import BrowserContextUserInput
+from zhy.modules.fetch.legal_status_mapping import refresh_legal_status_mapping_file
 from zhy.modules.fetch.monthly_patents import run_monthly_patent_fetch
 from zhy.modules.persist.json_io import load_json_file_any_utf, save_json
 from zhy.modules.persist.page_path import (
@@ -340,6 +341,11 @@ async def run_retry_task(args: argparse.Namespace) -> Path:
     retry_enrichment_summary = load_required_summary(enrichment_retry_result_path, label="enrichment retry summary")
     merged_enrichment_summary = merge_enrichment_summary(config, original_enrichment_summary, retry_enrichment_summary)
     save_json(enrichment_summary_path, merged_enrichment_summary)
+
+    await refresh_legal_status_mapping_file(
+        config=config,
+        folder_mapping_file=config.folder_mapping_file,
+    )
 
     report_output_path = await asyncio.to_thread(
         run_competitor_patent_report,

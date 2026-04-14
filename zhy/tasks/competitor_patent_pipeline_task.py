@@ -24,6 +24,7 @@ from zhy.modules.fetch.folder_patents_api import RequestScheduler
 from zhy.modules.fetch.folder_patents_auth import refresh_auth_state
 from zhy.modules.fetch.monthly_patents import run_monthly_patent_fetch
 from zhy.modules.fetch.patent_basic import build_page_supplement_payload
+from zhy.modules.fetch.legal_status_mapping import refresh_legal_status_mapping_file
 from zhy.modules.init.enrichment_auth import ensure_enrichment_auth_state
 from zhy.modules.init.pipeline_login import ensure_pipeline_logged_in
 from zhy.modules.persist.auth_state_io import load_auth_state_from_file
@@ -907,6 +908,18 @@ async def run_task(args: argparse.Namespace) -> Path:
         translation_summary_path = translation_step.value
         translation_status = "done"
         translation_pages_written = load_pages_written(translation_summary_path)
+
+    legal_status_step = await run_step_async(
+        refresh_legal_status_mapping_file,
+        config=config,
+        folder_mapping_file=mapping_path,
+        step_name="刷新法律状态映射",
+        critical=True,
+        retries=DEFAULT_MODULE_STEP_RETRIES,
+        retry_delay_seconds=DEFAULT_STEP_RETRY_DELAY_SECONDS,
+    )
+    if legal_status_step.value is None:
+        raise RuntimeError("failed to refresh legal status mapping")
 
     report_step = await run_step_async(
         asyncio.to_thread,

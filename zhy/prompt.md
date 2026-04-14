@@ -211,3 +211,5 @@ test_raises_error_when_critical_step_fails
     这些都不合格
 
 ---
+
+我现在是开发者,但是我这个脚本希望能在任何地方被任何人使用(默认Windows环境),我还缺什么?
