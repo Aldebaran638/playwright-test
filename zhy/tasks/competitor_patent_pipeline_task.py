@@ -37,17 +37,14 @@ from zhy.modules.persist.page_path import (
 )
 from zhy.modules.report.competitor_patent_report import run_competitor_patent_report
 from zhy.modules.transform.competitor_patent_pipeline import (
-    build_patent_abstract_translation_config,
     build_competitor_patent_report_config,
     build_existing_output_enrichment_config,
     build_monthly_auth_config,
-    load_pages_written,
 )
 from zhy.modules.transform.enrichment import (
     build_enrichment_auth_refresh_config,
     build_enrichment_request_headers,
 )
-from zhy.modules.transform.translate_patent_abstracts import run_translate_patent_abstracts
 
 
 # 默认月份，后续按公开/公告日期 PBD 的 YYYY-MM 使用。
@@ -336,7 +333,7 @@ DEFAULT_ENRICHMENT_RESUME = True
 # 默认补充信息阶段并发数。
 DEFAULT_ENRICHMENT_REQUEST_CONCURRENCY = 5
 # 默认是否开启摘要翻译步骤。
-DEFAULT_ABSTRACT_TRANSLATION_ENABLED = True
+DEFAULT_ABSTRACT_TRANSLATION_ENABLED = False
 # 默认翻译阶段是否跳过已生成结果。
 DEFAULT_ABSTRACT_TRANSLATION_RESUME = True
 # 默认翻译阶段并发数。
@@ -521,7 +518,7 @@ def build_config(args: argparse.Namespace) -> CompetitorPatentPipelineConfig:
         basic_request_body_template=DEFAULT_BASIC_REQUEST_BODY_TEMPLATE,
         enrichment_resume=DEFAULT_ENRICHMENT_RESUME,
         enrichment_request_concurrency=DEFAULT_ENRICHMENT_REQUEST_CONCURRENCY,
-        abstract_translation_enabled=bool(args.enable_abstract_translation),
+        abstract_translation_enabled=False,
         abstract_translation_resume=not bool(args.disable_abstract_translation_resume),
         abstract_translation_request_concurrency=args.abstract_translation_request_concurrency,
         abstract_translation_target_language=args.abstract_translation_target_language,
@@ -760,6 +757,8 @@ async def run_existing_output_enrichment(config: ExistingOutputEnrichmentConfig)
                                 folder_id=folder_id,
                                 abstract_headers=abstract_headers,
                                 basic_headers=basic_headers,
+                                abstract_request_url=config.abstract_request_url,
+                                abstract_request_template=config.abstract_request_template,
                                 basic_request_body_template=config.basic_request_body_template,
                                 timeout_seconds=config.timeout_seconds,
                                 proxies=proxies,
@@ -890,7 +889,7 @@ async def run_task(args: argparse.Namespace) -> Path:
         raise RuntimeError("failed to enrich monthly patents")
     enrichment_summary_path = enrich_step.value
     translation_summary_path: Path | None = None
-    translation_status = "skipped"
+    translation_status = "inlined_with_enrichment"
     translation_pages_written = 0
 
     if config.abstract_translation_enabled:

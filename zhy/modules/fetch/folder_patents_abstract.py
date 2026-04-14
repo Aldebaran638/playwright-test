@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import re
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,9 @@ from zhy.modules.common.types.folder_patents import AuthRefreshRequiredError, Fo
 
 if TYPE_CHECKING:
     from zhy.modules.fetch.folder_patents_api import RequestScheduler
+
+
+HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 
 
 # 简介：构建摘要接口请求头，复用现有鉴权字段并覆盖摘要场景头部。
@@ -78,7 +82,8 @@ def extract_abstract_text(payload: dict) -> str:
         if value is None:
             return ""
         if isinstance(value, str):
-            normalized = " ".join(value.replace("\n", " ").split())
+            without_tags = HTML_TAG_PATTERN.sub(" ", value)
+            normalized = " ".join(without_tags.replace("&nbsp;", " ").replace("\n", " ").split())
             if normalized in {"0", "0.0", "null", "None", "false", "False", "[]", "{}"}:
                 return ""
             return normalized
