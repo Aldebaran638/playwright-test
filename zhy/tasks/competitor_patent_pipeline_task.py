@@ -40,6 +40,7 @@ from zhy.modules.transform.competitor_patent_pipeline import (
     build_competitor_patent_report_config,
     build_existing_output_enrichment_config,
     build_monthly_auth_config,
+    load_pages_written,
 )
 from zhy.modules.transform.enrichment import (
     build_enrichment_auth_refresh_config,
