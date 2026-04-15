@@ -12,6 +12,7 @@ from zhy.modules.fetch.patent_basic import (
     build_basic_request_body,
     extract_grant_date_from_basic_payload,
     extract_abstract_from_basic_payload,
+    extract_supplemental_legal_status_from_basic_payload,
     strip_html_text,
     _has_granted_status
 )
@@ -151,5 +152,26 @@ class TestPatentBasic(unittest.TestCase):
         self.assertFalse(_has_granted_status("2"))
 
 
+    def test_extracts_supplemental_legal_status_as_granted_when_timeline_has_isd(self) -> None:
+        payload = {
+            "data": {
+                "timeline": [
+                    {"date": "2026-03-30", "type": ["OPN_PBD", "ISD"]}
+                ]
+            }
+        }
+        result = extract_supplemental_legal_status_from_basic_payload(payload)
+        self.assertEqual(result, "授权")
+
+    def test_extracts_supplemental_legal_status_as_published_when_timeline_has_no_isd(self) -> None:
+        payload = {
+            "data": {
+                "timeline": [
+                    {"date": "2023-02-17", "type": ["F_PBD"]}
+                ]
+            }
+        }
+        result = extract_supplemental_legal_status_from_basic_payload(payload)
+        self.assertEqual(result, "公开")
 if __name__ == "__main__":
     unittest.main(verbosity=2)

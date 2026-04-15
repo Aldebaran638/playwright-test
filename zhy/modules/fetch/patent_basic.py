@@ -52,6 +52,36 @@ def extract_abstract_from_basic_payload(payload: dict) -> str:
     return ""
 
 
+def _has_granted_status(value: object) -> bool:
+    if isinstance(value, list):
+        return any(_has_granted_status(item) for item in value)
+    return str(value or "").strip().upper() == "ISD"
+
+
+def extract_grant_date_from_basic_payload(payload: dict) -> str:
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return ""
+
+    timeline = data.get("timeline")
+    if isinstance(timeline, list):
+        for item in timeline:
+            if not isinstance(item, dict):
+                continue
+            if not _has_granted_status(item.get("type")):
+                continue
+            date_text = str(item.get("date") or "").strip()
+            if date_text:
+                return date_text
+
+    isd = str(data.get("ISD") or "").strip()
+    return isd
+
+
+def extract_supplemental_legal_status_from_basic_payload(payload: dict) -> str:
+    return "授权" if extract_grant_date_from_basic_payload(payload) else "公开"
+
+
 def detect_text_language(value: str) -> str:
     text = str(value or "")
     if not text.strip():
@@ -173,6 +203,7 @@ async def build_page_supplement_payload(
             "ABST_ORIGINAL": "",
             "ABST_LANGUAGE": "",
             "ABST_TRANSLATED": False,
+            "LEGAL_STATUS": "",
         }
 
         if not patent_id:
@@ -214,6 +245,8 @@ async def build_page_supplement_payload(
             record["ABST_LANGUAGE"] = detect_text_language(original_text)
             record["ABST"] = translated_text or original_text
             record["ABST_TRANSLATED"] = bool(translated_text and translated_text != original_text)
+            if not row.get("LEGAL_STATUS"):
+                record["LEGAL_STATUS"] = extract_supplemental_legal_status_from_basic_payload(basic_payload)
         except AuthRefreshRequiredError:
             raise
         except Exception as exc:

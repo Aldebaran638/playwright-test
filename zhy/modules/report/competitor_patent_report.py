@@ -33,6 +33,12 @@ LEGAL_STATUS_NORMALIZATION_MAP = {
 }
 
 
+def normalize_legal_status_label(label: str) -> str:
+    normalized = LEGAL_STATUS_NORMALIZATION_MAP.get(label, label)
+    if "驳回" in normalized:
+        return "授权"
+    return normalized
+
 def validate_month_text(month_text: str) -> None:
     if not MONTH_PATTERN.match(month_text):
         raise ValueError("month must use YYYY-MM format")
@@ -136,9 +142,25 @@ def resolve_legal_status_text(codes: object, mapping: dict[str, str]) -> str:
         if not label:
             logger.warning("[competitor_patent_report] legal status code missing mapping: {}", code)
             continue
-        label = LEGAL_STATUS_NORMALIZATION_MAP.get(label, label)
+        label = normalize_legal_status_label(label)
         labels.append(label)
     return "；".join(labels)
+
+
+
+def resolve_report_legal_status_text(
+    *,
+    original_codes: object,
+    enriched_record: dict,
+    mapping: dict[str, str],
+) -> str:
+    resolved = resolve_legal_status_text(original_codes, mapping)
+    if resolved:
+        return resolved
+    enriched_label = normalize_text(enriched_record.get("LEGAL_STATUS"))
+    if not enriched_label:
+        return ""
+    return normalize_legal_status_label(enriched_label)
 
 
 def resolve_authorization_date(*, publication_date: str, legal_status_text: str) -> str:
@@ -220,7 +242,11 @@ def collect_report_rows(config: CompetitorPatentReportConfig) -> list[Competitor
             application_number = normalize_text(original_row.get("APN"))
             publication_number = normalize_text(original_row.get("PN"))
             application_or_publication_number = application_number or publication_number
-            legal_status_text = resolve_legal_status_text(original_row.get("LEGAL_STATUS"), legal_status_mapping)
+            legal_status_text = resolve_report_legal_status_text(
+                original_codes=original_row.get("LEGAL_STATUS"),
+                enriched_record=enriched_record,
+                mapping=legal_status_mapping,
+            )
 
             rows.append(
                 CompetitorPatentReportRow(
